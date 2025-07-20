@@ -1,0 +1,373 @@
+//+------------------------------------------------------------------+
+//|             Binary Option Backtest EA (M1) - ChatGPT            |
+//+------------------------------------------------------------------+
+#property copyright "ChatGPT"
+#property version   "1.0"
+#property strict
+
+//--- Inputs
+input double StartBalance      = 8000.0; 
+input double PayoutPercent     = 80.0;     
+input int StartHour            = 8;      
+input int EndHour              = 23;   
+input int TimeZone             = 7;   
+input bool EnableLog           = true;    
+   
+//--- Globals
+double balance;
+double lotSize;
+int step = 1;
+datetime lastTradeTime = 0;
+
+double totalWin = 0;
+double totalLose = 0;
+int maxWinStep = 0;
+int maxLoseStep = 0;
+int currentWinStep = 0;
+int currentLoseStep = 0;
+
+//+------------------------------------------------------------------+
+//| Inputs                                                          |
+//+------------------------------------------------------------------+
+input int EMAFast       = 10;  // Updated
+input int EMASlow       = 21;  // Updated
+input int RSIPeriod     = 7;   // Updated
+input int MACDFast      = 6;   // Updated
+input int MACDSlow      = 13;  // Updated
+input int MACDSignal    = 5;   // Updated
+input int StochK        = 5;   // Updated
+input int StochD        = 3;   // Updated
+input int StochSlowing  = 3;   // Updated
+input int BBPeriod      = 14;  // Updated
+input int BBDeviation   = 2;   // Updated
+input int ADXPeriod     = 7;   // Updated
+input int WPRPeriod     = 7;   // Updated
+
+int ema_fast, ema_slow, ema_fast15, ema_slow15, rsi_handle, macd_handle, stoch_handle, bb_handle, adx_handle, willr_handle;
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+  {
+   balance = StartBalance;
+   PrintLog(StringFormat("Backtest Started | Initial Balance = %.2f", balance));
+
+   // --- All indicators for M5 ---
+   ema_fast     = iMA(NULL, PERIOD_M5, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
+   ema_slow     = iMA(NULL, PERIOD_M5, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
+   rsi_handle   = iRSI(NULL, PERIOD_M5, RSIPeriod, PRICE_CLOSE);
+   macd_handle  = iMACD(NULL, PERIOD_M5, MACDFast, MACDSlow, MACDSignal, PRICE_CLOSE);
+   stoch_handle = iStochastic(NULL, PERIOD_M5, StochK, StochD, StochSlowing, MODE_SMA, STO_LOWHIGH);
+   bb_handle    = iBands(NULL, PERIOD_M5, BBPeriod, BBDeviation, 0, PRICE_CLOSE);
+   adx_handle   = iADX(NULL, PERIOD_M5, ADXPeriod);
+   willr_handle = iWPR(NULL, PERIOD_M5, WPRPeriod);
+
+   // --- Confirm EMA M15 ---
+   ema_fast15   = iMA(NULL, PERIOD_M15, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
+   ema_slow15   = iMA(NULL, PERIOD_M15, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
+
+   if(ema_fast==INVALID_HANDLE || ema_slow==INVALID_HANDLE || rsi_handle==INVALID_HANDLE || 
+      macd_handle==INVALID_HANDLE || stoch_handle==INVALID_HANDLE || bb_handle==INVALID_HANDLE || 
+      adx_handle==INVALID_HANDLE || willr_handle==INVALID_HANDLE || 
+      ema_fast15==INVALID_HANDLE || ema_slow15==INVALID_HANDLE)
+   {
+      Print("Error: One or more handles failed to create!");
+      return INIT_FAILED;
+   }
+
+   return INIT_SUCCEEDED;
+  }
+
+
+int GetMajorityVoteSignalM5()
+{
+    int votes_up = 0, votes_down = 0;
+    int index = 2; // ใช้ index = 1 สำหรับ real time M5
+
+    //--- EMA Fast & Slow (M5)
+    double emaFast[], emaSlow[];
+    if(CopyBuffer(ema_fast, 0, index, 1, emaFast) > 0 && CopyBuffer(ema_slow, 0, index, 1, emaSlow) > 0)
+    {
+        if(emaFast[0] > emaSlow[0]) votes_up++;
+        else if(emaFast[0] < emaSlow[0]) votes_down++;
+        PrintLog(StringFormat("EMAFast=%.5f | EMASlow=%.5f", emaFast[0], emaSlow[0]));
+    }
+    else
+        PrintLog("EMA CopyBuffer failed");
+
+    //--- RSI (M5)
+    double rsi_val[];
+    if(CopyBuffer(rsi_handle, 0, index, 1, rsi_val) > 0)
+    {
+        if(rsi_val[0] > 55) votes_up++;
+        else if(rsi_val[0] < 45) votes_down++;
+        PrintLog(StringFormat("RSI=%.2f", rsi_val[0]));
+    }
+    else
+        PrintLog("RSI CopyBuffer failed");
+
+    //--- MACD (M5)
+    double macd_main[], macd_signal[];
+    if(CopyBuffer(macd_handle, 0, index, 1, macd_main) > 0 && CopyBuffer(macd_handle, 1, index, 1, macd_signal) > 0)
+    {
+        if(macd_main[0] > macd_signal[0]) votes_up++;
+        else if(macd_main[0] < macd_signal[0]) votes_down++;
+        PrintLog(StringFormat("MACD Main=%.5f | Signal=%.5f", macd_main[0], macd_signal[0]));
+    }
+    else
+        PrintLog("MACD CopyBuffer failed");
+
+    //--- Stochastic (M5)
+    double k[], d[];
+    if(CopyBuffer(stoch_handle, 0, index, 1, k) > 0 && CopyBuffer(stoch_handle, 1, index, 1, d) > 0)
+    {
+        if(k[0] > d[0] && k[0] > 50) votes_up++;
+        else if(k[0] < d[0] && k[0] < 50) votes_down++;
+        PrintLog(StringFormat("Stochastic K=%.2f | D=%.2f", k[0], d[0]));
+    }
+    else
+        PrintLog("Stochastic CopyBuffer failed");
+
+    //--- Bollinger Bands (M5)
+    double bb_middle[];
+    if(CopyBuffer(bb_handle, 1, index, 1, bb_middle) > 0)
+    {
+        double close_price = iClose(NULL, PERIOD_M5, index);
+        if(close_price > bb_middle[0]) votes_up++;
+        else if(close_price < bb_middle[0]) votes_down++;
+        PrintLog(StringFormat("Close=%.5f | BB Middle=%.5f", close_price, bb_middle[0]));
+    }
+    else
+        PrintLog("Bollinger Bands CopyBuffer failed");
+
+    //--- ADX (M5)
+    double adx_val[], plusDI[], minusDI[];
+    bool isTrend = false;
+    if(CopyBuffer(adx_handle, 0, index, 1, adx_val) > 0 && 
+       CopyBuffer(adx_handle, 1, index, 1, plusDI) > 0 && 
+       CopyBuffer(adx_handle, 2, index, 1, minusDI) > 0)
+    {
+        if(adx_val[0] > 25) isTrend = true;  // เทรนด์แรง
+        if(adx_val[0] > 20)
+        {
+            if(plusDI[0] > minusDI[0]) votes_up++;
+            else if(minusDI[0] > plusDI[0]) votes_down++;
+        }
+        PrintLog(StringFormat("ADX=%.2f | +DI=%.2f | -DI=%.2f", adx_val[0], plusDI[0], minusDI[0]));
+    }
+    else
+        PrintLog("ADX CopyBuffer failed");
+
+    //--- Williams %R (M5)
+    double willr_val[];
+    if(CopyBuffer(willr_handle, 0, index, 1, willr_val) > 0)
+    {
+        if(willr_val[0] > -50) votes_up++;
+        else if(willr_val[0] < -50) votes_down++;
+        PrintLog(StringFormat("Williams %%R=%.2f", willr_val[0]));
+    }
+    else
+        PrintLog("Williams %R CopyBuffer failed");
+
+    //--- Confirm Trend Only!
+    if(!isTrend)
+    {
+        PrintLog("Market Sideway: No Trade");
+        return 0;
+    }
+
+    //--- EMA Confirm ด้วย TF M15 ---
+    double emaFast15[], emaSlow15[];
+    bool tf15_confirm = true;
+    if(CopyBuffer(ema_fast15, 0, 0, 1, emaFast15) > 0 && CopyBuffer(ema_slow15, 0, 0, 1, emaSlow15) > 0)
+    {
+        if(votes_up > votes_down && emaFast15[0] <= emaSlow15[0])
+        {
+            PrintLog("TF15 ไม่ยืนยันขาขึ้น");
+            tf15_confirm = false;
+        }
+        if(votes_down > votes_up && emaFast15[0] >= emaSlow15[0])
+        {
+            PrintLog("TF15 ไม่ยืนยันขาลง");
+            tf15_confirm = false;
+        }
+        PrintLog(StringFormat("EMA15Fast=%.5f | EMA15Slow=%.5f", emaFast15[0], emaSlow15[0]));
+    }
+    else
+    {
+        PrintLog("EMA M15 CopyBuffer failed");
+        tf15_confirm = false;
+    }
+
+    if(!tf15_confirm) return 0;
+
+    //--- Decision: Strong Majority Only!
+    PrintLog(StringFormat("votes_up=%d | votes_down=%d", votes_up, votes_down));
+
+    if(votes_up >= 5 && votes_up - votes_down >= 3)
+    {
+        PrintLog("Strong Call Signal!!");
+        return 1;
+    }
+    if(votes_down >= 5 && votes_down - votes_up >= 3)
+    {
+        PrintLog("Strong Put Signal!!");
+        return -1;
+    }
+
+    PrintLog("No Strong Signal: No Trade");
+    return 0;
+}
+
+
+
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+   PrintLog(StringFormat("Backtest Ended | Final Balance = %.2f", balance));
+   Print("Total trade: ", totalWin + totalLose, ", win rate: ", totalWin / (totalWin + totalLose) * 100);
+   Print("Max win step = ", maxWinStep);
+   Print("Max lose step = ", maxLoseStep);  
+   Print("Version: 1");  
+  }
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+   if (step > 11) return;
+   
+   datetime currentTime = iTime(_Symbol, PERIOD_M5, 0);
+   if(currentTime == lastTradeTime) return;
+   lastTradeTime = currentTime;
+
+   MqlDateTime t;
+   TimeToStruct(currentTime, t);
+   int localHour = (t.hour + TimeZone) % 24;
+   if (localHour < StartHour || localHour >= EndHour) return;
+   
+   Print("Start trade -> ", NowDateTime());
+
+   int direction = GetMajorityVoteSignalM5(); // 1 = CALL, -1 = PUT, 0 = No trade
+   if(direction == 0) {
+      PrintLog("Not trade");
+      Print("==========");
+      return;
+   }
+
+   lotSize = CalcLotSize(step);
+
+   bool result = SimulateTrade(direction);
+
+   if(result)
+     {
+      double profit = lotSize * (PayoutPercent / 100.0);
+      balance += profit;
+      PrintLog(StringFormat("Step=%d: WIN | Dir=%s | Lot=%.2f | Profit=%.2f | Balance=%.2f",
+                       step, (direction==1 ? "CALL" : "PUT"), lotSize, profit, balance));
+      step = 1;
+      totalWin++;
+      
+      currentLoseStep = 0;
+      currentWinStep++;
+      if (currentWinStep > maxWinStep) {
+         maxWinStep = currentWinStep;
+      }
+     }
+   else
+     {
+      balance -= lotSize;
+      PrintLog(StringFormat("Step=%d: LOSS | Dir=%s | Lot=%.2f | Loss=%.2f | Balance=%.2f",
+                       step, (direction==1 ? "CALL" : "PUT"), lotSize, lotSize, balance));
+      step++;
+      totalLose++;
+      
+      currentWinStep = 0;
+      currentLoseStep++;
+      if (currentLoseStep > maxLoseStep) {
+         maxLoseStep = currentLoseStep;
+      }
+     }
+     
+     Print("==========");
+  }
+
+//+------------------------------------------------------------------+
+//| Simulate Binary Trade (close on next bar)                        |
+//+------------------------------------------------------------------+
+bool SimulateTrade(int direction)
+  {
+   double open = iOpen(_Symbol, PERIOD_M5, 1);
+   double close = iClose(_Symbol, PERIOD_M5, 1);
+   
+   Print("Open = ", open, " Close = ", close);
+
+   if(direction == 1 && close > open) return true;  // CALL win
+   if(direction == -1 && close < open) return true; // PUT win
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Calculate Lot Size (Fixed or Martingale)                         |
+//+------------------------------------------------------------------+
+double CalcLotSize(int current_step)
+  {
+      switch(current_step)
+     {
+      case 1:
+         return 1.25;      // ไม้ 1
+      case 2:
+         return 2.81;      // ไม้ 2
+      case 3:
+         return 6.33;      // ไม้ 3
+      case 4:
+         return 14.25;     // ไม้ 4
+      case 5:
+         return 32.05;     // ไม้ 5
+      case 6:
+         return 72.11;     // ไม้ 6
+      case 7:
+         return 163.51;    // ไม้ 7
+      case 8:
+         return 368.14;    // ไม้ 8
+      case 9:
+         return 828.06;    // ไม้ 9
+      case 10:
+         return 1847.56;    // ไม้ 10
+      case 11:
+         return 4157.01;    // ไม้ 11
+     }
+     
+     return 0;
+  }
+
+
+//+------------------------------------------------------------------+
+//| Logging Function                                                 |
+//+------------------------------------------------------------------+
+
+void PrintLog(string msg) {
+   if (EnableLog) Print(msg);
+}
+
+string NowDateTime() {
+   datetime now = TimeCurrent() - 60;
+   string timeStr = TimeToString(now, TIME_DATE | TIME_SECONDS);
+   return timeStr;
+}
+
+void LogOHLC(int index)
+  {
+   double open  = iOpen(_Symbol, PERIOD_M5, index);
+   datetime time = iTime(_Symbol, PERIOD_M5, index);
+
+   PrintLog(StringFormat("Candle[%d]: Time=%s | O=%.5f",
+             index,
+             TimeToString(time, TIME_DATE|TIME_SECONDS),
+             open));
+  }
