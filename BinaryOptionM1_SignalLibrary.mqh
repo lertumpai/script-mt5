@@ -13,6 +13,16 @@ enum SIGNAL_DIRECTION {
     SIGNAL_PUT = -1         // Put Signal
 };
 
+
+string EnumToStringSignalDirection(SIGNAL_DIRECTION res) {
+    switch(res) {
+        case SIGNAL_NONE: return "NONE";
+        case SIGNAL_CALL: return "CALL";
+        case SIGNAL_PUT: return "PUT";
+        default: return "UNKNOWN";
+    }
+}
+
 enum SIGNAL_STRENGTH {
     STRENGTH_WEAK = 1,      // Weak Signal
     STRENGTH_MODERATE = 2,  // Moderate Signal
@@ -79,6 +89,9 @@ struct SignalParameters {
     bool useADXFilter;
     double minADXLevel;
 };
+
+//--- Input Parameters
+input int DataIndex = 2; // Bar index for signal calculation (1=live, 2=backtest recommended)
 
 //--- Global Variables for Indicators
 int g_emaFast_handle = INVALID_HANDLE;
@@ -244,8 +257,8 @@ BinarySignal GetBinarySignal(string symbol = "") {
 double CalculateTrendScore(string symbol) {
     double emaFast[], emaSlow[];
     
-    if(CopyBuffer(g_emaFast_handle, 0, 1, 1, emaFast) <= 0 ||
-       CopyBuffer(g_emaSlow_handle, 0, 1, 1, emaSlow) <= 0) {
+    if(CopyBuffer(g_emaFast_handle, 0, DataIndex, 1, emaFast) <= 0 ||
+       CopyBuffer(g_emaSlow_handle, 0, DataIndex, 1, emaSlow) <= 0) {
         return 0.0;
     }
     
@@ -277,9 +290,9 @@ double CalculateTrendScore(string symbol) {
 double CalculateMomentumScore(string symbol) {
     double rsi[], macdMain[], macdSignal[];
     
-    if(CopyBuffer(g_rsi_handle, 0, 1, 1, rsi) <= 0 ||
-       CopyBuffer(g_macd_handle, 0, 1, 1, macdMain) <= 0 ||
-       CopyBuffer(g_macd_handle, 1, 1, 1, macdSignal) <= 0) {
+    if(CopyBuffer(g_rsi_handle, 0, DataIndex, 1, rsi) <= 0 ||
+       CopyBuffer(g_macd_handle, 0, DataIndex, 1, macdMain) <= 0 ||
+       CopyBuffer(g_macd_handle, 1, DataIndex, 1, macdSignal) <= 0) {
         return 0.0;
     }
     
@@ -315,13 +328,13 @@ double CalculateMomentumScore(string symbol) {
 //+------------------------------------------------------------------+
 double CalculateOscillatorScore(string symbol) {
     double stochK[], stochD[], bbUpper[], bbMiddle[], bbLower[];
-    double closePrice = iClose(symbol, PERIOD_M1, 1);
+    double closePrice = iClose(symbol, PERIOD_M1, DataIndex);
     
-    if(CopyBuffer(g_stoch_handle, 0, 1, 1, stochK) <= 0 ||
-       CopyBuffer(g_stoch_handle, 1, 1, 1, stochD) <= 0 ||
-       CopyBuffer(g_bb_handle, 0, 1, 1, bbUpper) <= 0 ||
-       CopyBuffer(g_bb_handle, 1, 1, 1, bbMiddle) <= 0 ||
-       CopyBuffer(g_bb_handle, 2, 1, 1, bbLower) <= 0) {
+    if(CopyBuffer(g_stoch_handle, 0, DataIndex, 1, stochK) <= 0 ||
+       CopyBuffer(g_stoch_handle, 1, DataIndex, 1, stochD) <= 0 ||
+       CopyBuffer(g_bb_handle, 0, DataIndex, 1, bbUpper) <= 0 ||
+       CopyBuffer(g_bb_handle, 1, DataIndex, 1, bbMiddle) <= 0 ||
+       CopyBuffer(g_bb_handle, 2, DataIndex, 1, bbLower) <= 0) {
         return 0.0;
     }
     
@@ -355,13 +368,13 @@ double CalculateVolumeScore(string symbol) {
     if(!g_params.useVolumeFilter) return 0.0;
     
     // Get current volume
-    long currentVolume = iVolume(symbol, PERIOD_M1, 1);
+    long currentVolume = iVolume(symbol, PERIOD_M1, DataIndex);
     
     // Calculate average volume manually from recent bars
     long totalVolume = 0;
     int validBars = 0;
     
-    for(int i = 1; i <= g_params.volumeMAPeriod; i++) {
+    for(int i = DataIndex; i <= g_params.volumeMAPeriod + DataIndex - 1; i++) {
         long barVolume = iVolume(symbol, PERIOD_M1, i);
         if(barVolume > 0) {
             totalVolume += barVolume;
@@ -394,8 +407,11 @@ bool CheckM5TrendAlignment(double m1Signal, string symbol) {
     
     double emaFastM5[], emaSlowM5[];
     
-    if(CopyBuffer(g_emaFastM5_handle, 0, 0, 1, emaFastM5) <= 0 ||
-       CopyBuffer(g_emaSlowM5_handle, 0, 0, 1, emaSlowM5) <= 0) {
+    // For M5 confirmation, use index based on M1 to M5 ratio (approximately 1/5)
+    int m5Index = (DataIndex > 1) ? (DataIndex / 5) + 1 : 1;
+    
+    if(CopyBuffer(g_emaFastM5_handle, 0, m5Index, 1, emaFastM5) <= 0 ||
+       CopyBuffer(g_emaSlowM5_handle, 0, m5Index, 1, emaSlowM5) <= 0) {
         return false;
     }
     
@@ -416,7 +432,7 @@ bool CheckADXStrength(string symbol) {
     
     double adx[];
     
-    if(CopyBuffer(g_adx_handle, 0, 1, 1, adx) <= 0) {
+    if(CopyBuffer(g_adx_handle, 0, DataIndex, 1, adx) <= 0) {
         return false;
     }
     
@@ -430,13 +446,13 @@ bool CheckVolumeConfirmation(string symbol) {
     if(!g_params.useVolumeFilter) return true;
     
     // Get current volume
-    long currentVolume = iVolume(symbol, PERIOD_M1, 1);
+    long currentVolume = iVolume(symbol, PERIOD_M1, DataIndex);
     
     // Calculate average volume from recent 10 bars
     long totalVolume = 0;
     int validBars = 0;
     
-    for(int i = 1; i <= 10; i++) {
+    for(int i = DataIndex; i <= DataIndex + 9; i++) {
         long barVolume = iVolume(symbol, PERIOD_M1, i);
         if(barVolume > 0) {
             totalVolume += barVolume;
