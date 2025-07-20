@@ -216,16 +216,16 @@ void SetDefaultParameters() {
     g_params.adxPeriod = 14;
     g_params.volumeMAPeriod = 20;
     
-    // Enhanced thresholds (stricter to prevent losses)
-    g_params.minConfidence = 80.0;              // Increased from 70
-    g_params.strongSignalThreshold = 80.0;      // Increased from 70
-    g_params.moderateSignalThreshold = 70.0;    // Increased from 60
-    g_params.weakSignalThreshold = 60.0;        // Increased from 50
+    // ULTRA STRICT thresholds (emergency performance fix)
+    g_params.minConfidence = 95.0;              // Only elite signals
+    g_params.strongSignalThreshold = 120.0;     // Super high threshold
+    g_params.moderateSignalThreshold = 100.0;   // Very high threshold
+    g_params.weakSignalThreshold = 80.0;        // No weak signals allowed
     
-    // ADX filters (stricter)
+    // ULTRA STRICT ADX filters (emergency performance)
     g_params.useADXFilter = true;
-    g_params.minADXLevel = 25.0;
-    g_params.maxADXLevel = 80.0;                // Avoid over-trending
+    g_params.minADXLevel = 30.0;                // Higher minimum
+    g_params.maxADXLevel = 70.0;                // Lower maximum (avoid chaos)
     
     // Volatility settings
     g_params.atrPeriod = 14;
@@ -305,11 +305,18 @@ BinarySignal GetBinarySignal(string symbol = "") {
     signal.oscillatorScore = CalculateOscillatorScore(symbol);
     signal.volumeScore = CalculateVolumeScore(symbol);
     
-    // ENHANCED: Calculate total score with weighted components (trend most important)
-    signal.totalScore = (signal.trendScore * 0.4) + 
-                       (signal.momentumScore * 0.3) + 
-                       (signal.oscillatorScore * 0.2) + 
-                       (signal.volumeScore * 0.1);
+    // EMERGENCY: Ultra trend-focused scoring for better performance
+    signal.totalScore = (signal.trendScore * 0.6) +     // Massively increase trend weight
+                       (signal.momentumScore * 0.25) +   // Reduce momentum weight
+                       (signal.oscillatorScore * 0.1) +  // Reduce oscillator weight
+                       (signal.volumeScore * 0.05);      // Reduce volume weight
+    
+    // EMERGENCY: Add strong trend bonus/penalty
+    if(signal.trendStrength > 0.8 && MathAbs(signal.trendScore) > 80) {
+        signal.totalScore *= 1.3; // Massive bonus for strong trending signals
+    } else if(signal.trendStrength < 0.6) {
+        signal.totalScore *= 0.3; // Massive penalty for weak trends
+    }
     signal.confidence = MathAbs(signal.totalScore);
     
     // ENHANCED: Apply all confirmations
@@ -325,8 +332,8 @@ BinarySignal GetBinarySignal(string symbol = "") {
     // Determine signal direction and strength
     DetermineSignalDirectionAndStrength(signal);
     
-    // ENHANCED: Validate signal with stricter criteria
-    signal.isValid = ValidateEnhancedSignal(signal);
+    // ULTRA STRICT: Use emergency validation for performance fix
+    signal.isValid = ValidateUltraSignal(signal);
     
     return signal;
 }
@@ -1275,6 +1282,19 @@ bool PassPreFilters(BinarySignal &signal) {
         return false;
     }
     
+    // 7. EMERGENCY STOP - Daily performance protection
+    CheckDailyPerformance();
+    if(g_emergencyStop) {
+        signal.reason = "Emergency stop activated - poor daily performance";
+        return false;
+    }
+    
+    // 8. EMERGENCY: Only trade during BEST sessions
+    if(!IsBestTradingSession()) {
+        signal.reason = "Outside optimal trading session";
+        return false;
+    }
+    
     return true;
 }
 
@@ -1497,12 +1517,21 @@ void PrintEnhancedSignalInfo(BinarySignal &signal) {
 //| ULTIMATE ENHANCEMENT: Adaptive Signal Intelligence              |
 //+------------------------------------------------------------------+
 
-// Global adaptive learning variables
+// EMERGENCY Performance monitoring variables
 double g_adaptiveMultiplier = 1.0;
 int g_recentWins = 0;
 int g_recentLosses = 0;
 int g_adaptivePeriod = 20;
 double g_performanceScore = 0.0;
+
+// CRITICAL: Emergency performance controls
+int g_dailyTrades = 0;
+int g_dailyWins = 0;
+int g_dailyLosses = 0;
+double g_dailyWinRate = 0.0;
+int g_emergencyStopLosses = 5;           // Stop after 5 daily losses
+bool g_emergencyStop = false;
+datetime g_lastTradeDay = 0;
 
 //+------------------------------------------------------------------+
 //| Adaptive Signal Enhancement (Machine Learning-like)             |
@@ -1510,15 +1539,22 @@ double g_performanceScore = 0.0;
 double ApplyAdaptiveEnhancement(BinarySignal &signal, string symbol) {
     double enhancementFactor = 1.0;
     
-    // 1. PERFORMANCE-BASED ADAPTATION
-    if((g_recentWins + g_recentLosses) >= 10) {
+    // 1. ULTRA AGGRESSIVE PERFORMANCE-BASED ADAPTATION
+    if((g_recentWins + g_recentLosses) >= 5) { // React faster
         double recentWinRate = (double)g_recentWins / (g_recentWins + g_recentLosses);
         
         if(recentWinRate > 0.8) {
-            enhancementFactor *= 1.1; // Increase confidence when performing well
-        } else if(recentWinRate < 0.4) {
-            enhancementFactor *= 0.7; // Decrease confidence when performing poorly
+            enhancementFactor *= 1.05; // Smaller boost when good
+        } else if(recentWinRate < 0.5) {
+            enhancementFactor *= 0.4; // MASSIVE penalty when poor
+        } else if(recentWinRate < 0.6) {
+            enhancementFactor *= 0.6; // Strong penalty when mediocre
         }
+    }
+    
+    // ADDITIONAL: Emergency shutdown if recent performance is terrible
+    if((g_recentWins + g_recentLosses) >= 8 && (double)g_recentWins / (g_recentWins + g_recentLosses) < 0.3) {
+        enhancementFactor *= 0.1; // Nearly shut down system
     }
     
     // 2. MARKET VOLATILITY ADAPTATION
@@ -1715,4 +1751,118 @@ void GetAdaptiveMetrics(double &winRate, double &adaptiveMultiplier, int &recent
     winRate = g_performanceScore;
     adaptiveMultiplier = g_adaptiveMultiplier;
     recentTrades = g_recentWins + g_recentLosses;
+}
+
+//+------------------------------------------------------------------+
+//| EMERGENCY PERFORMANCE FUNCTIONS TO FIX BAD PERFORMANCE          |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Check Daily Performance and Activate Emergency Stop             |
+//+------------------------------------------------------------------+
+void CheckDailyPerformance() {
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    datetime currentDay = StringToTime(StringFormat("%04d.%02d.%02d 00:00:00", dt.year, dt.mon, dt.day));
+    
+    // Reset daily counters if new day
+    if(currentDay != g_lastTradeDay) {
+        g_dailyTrades = 0;
+        g_dailyWins = 0;
+        g_dailyLosses = 0;
+        g_dailyWinRate = 0.0;
+        g_emergencyStop = false;
+        g_lastTradeDay = currentDay;
+    }
+    
+    // Calculate daily win rate
+    if(g_dailyTrades > 0) {
+        g_dailyWinRate = (double)g_dailyWins / g_dailyTrades;
+    }
+    
+    // EMERGENCY STOP CONDITIONS
+    if(g_dailyLosses >= g_emergencyStopLosses) {
+        g_emergencyStop = true;
+        Print("🚨 EMERGENCY STOP ACTIVATED - Too many daily losses: ", g_dailyLosses);
+    }
+    
+    // Also stop if win rate is terrible after enough trades
+    if(g_dailyTrades >= 10 && g_dailyWinRate < 0.3) {
+        g_emergencyStop = true;
+        Print("🚨 EMERGENCY STOP ACTIVATED - Poor daily win rate: ", DoubleToString(g_dailyWinRate * 100, 1), "%");
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Update Daily Performance (Call after each trade)               |
+//+------------------------------------------------------------------+
+void UpdateDailyPerformance(bool wasWin) {
+    g_dailyTrades++;
+    if(wasWin) {
+        g_dailyWins++;
+    } else {
+        g_dailyLosses++;
+    }
+    
+    // Update overall system
+    UpdateConsecutiveLosses(wasWin);
+}
+
+//+------------------------------------------------------------------+
+//| Check if it's the BEST Trading Session (very strict)           |
+//+------------------------------------------------------------------+
+bool IsBestTradingSession() {
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    
+    // Only trade during PRIME OVERLAP sessions (GMT)
+    if(dt.day_of_week >= 2 && dt.day_of_week <= 4) { // Tue-Thu only
+        // London-NY overlap (13:00-17:00 GMT) - BEST session
+        if(dt.hour >= 13 && dt.hour <= 16) {
+            return true;
+        }
+        // Asian-London overlap (07:00-09:00 GMT) - Good session  
+        if(dt.hour >= 8 && dt.hour <= 9) {
+            return true;
+        }
+    }
+    
+    return false; // Outside prime time = NO TRADING
+}
+
+//+------------------------------------------------------------------+
+//| ULTRA Enhanced Signal Validation (Super Strict)                |
+//+------------------------------------------------------------------+
+bool ValidateUltraSignal(BinarySignal &signal) {
+    // Only allow PERFECT signals
+    if(signal.direction == SIGNAL_NONE) return false;
+    if(signal.confidence < 95.0) return false;         // Ultra high bar
+    if(signal.riskLevel > 2) return false;             // Only lowest risk
+    if(signal.totalScore < 120.0) return false;        // Super high score required
+    
+    // ALL confirmations must be true (no exceptions)
+    if(!signal.m5Confirmed) return false;
+    if(!signal.adxConfirmed) return false;
+    if(!signal.volumeConfirmed) return false;
+    if(!signal.marketStructureConfirmed) return false;
+    if(!signal.volatilityConfirmed) return false;
+    if(!signal.newsTimeConfirmed) return false;
+    
+    // Additional ULTRA strict checks
+    if(signal.trendStrength < 0.8) return false;       // Only strong trends
+    if(signal.volatilityLevel > 1.5) return false;     // Avoid high volatility
+    
+    // Market must be in TRENDING condition
+    if(signal.marketCondition != MARKET_TRENDING) return false;
+    
+    return true;
+}
+
+//+------------------------------------------------------------------+
+//| Get Emergency Performance Status                                |
+//+------------------------------------------------------------------+
+void GetEmergencyStatus(bool &isEmergencyStop, double &dailyWinRate, int &dailyTrades) {
+    isEmergencyStop = g_emergencyStop;
+    dailyWinRate = g_dailyWinRate;
+    dailyTrades = g_dailyTrades;
 } 

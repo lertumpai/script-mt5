@@ -214,11 +214,11 @@ void SetDefaultParametersM5() {
     g_params.adxPeriod = 14;
     g_params.volumeMAPeriod = 16;       // Adjusted for M5
     
-    // Enhanced thresholds (stricter to prevent losses)
-    g_params.minConfidence = 75.0;              // Increased from 65
-    g_params.strongSignalThreshold = 75.0;      // Increased from 65
-    g_params.moderateSignalThreshold = 65.0;    // Increased from 55
-    g_params.weakSignalThreshold = 55.0;        // Increased from 45
+    // ULTRA STRICT thresholds M5 (emergency performance fix)
+    g_params.minConfidence = 90.0;              // Only elite M5 signals
+    g_params.strongSignalThreshold = 110.0;     // Super high M5 threshold
+    g_params.moderateSignalThreshold = 95.0;    // Very high M5 threshold
+    g_params.weakSignalThreshold = 75.0;        // No weak M5 signals
     
     // ADX filters (stricter)
     g_params.useADXFilter = true;
@@ -286,8 +286,18 @@ BinarySignal GetBinarySignalM5(string symbol = "") {
     signal.oscillatorScore = CalculateOscillatorScoreM5(symbol);
     signal.volumeScore = CalculateVolumeScoreM5(symbol);
     
-    // Calculate total score
-    signal.totalScore = signal.trendScore + signal.momentumScore + signal.oscillatorScore + signal.volumeScore;
+    // EMERGENCY M5: Ultra trend-focused scoring for better performance
+    signal.totalScore = (signal.trendScore * 0.65) +    // Even higher trend weight for M5
+                       (signal.momentumScore * 0.2) +    // Reduce momentum weight
+                       (signal.oscillatorScore * 0.1) +  // Reduce oscillator weight
+                       (signal.volumeScore * 0.05);      // Reduce volume weight
+    
+    // EMERGENCY M5: Add strong trend bonus/penalty (stricter)
+    if(signal.trendStrength > 0.75 && MathAbs(signal.trendScore) > 75) {
+        signal.totalScore *= 1.4; // Even bigger bonus for strong M5 trending signals
+    } else if(signal.trendStrength < 0.65) {
+        signal.totalScore *= 0.2; // Massive penalty for weak M5 trends
+    }
     signal.confidence = MathAbs(signal.totalScore);
     
     // Apply confirmation filters
@@ -299,7 +309,8 @@ BinarySignal GetBinarySignalM5(string symbol = "") {
     DetermineSignalDirectionAndStrengthM5(signal);
     
     // Validate signal
-    signal.isValid = ValidateSignalM5(signal);
+    // ULTRA STRICT M5: Use emergency validation for performance fix
+    signal.isValid = ValidateUltraSignalM5(signal);
     
     return signal;
 }
@@ -1246,6 +1257,19 @@ bool PassPreFiltersM5(BinarySignal &signal) {
         return false;
     }
     
+    // 7. M5 EMERGENCY STOP - Daily performance protection
+    CheckDailyPerformanceM5();
+    if(g_emergencyStopM5) {
+        signal.reason = "M5 Emergency stop activated - poor daily performance";
+        return false;
+    }
+    
+    // 8. EMERGENCY: Only trade during BEST M5 sessions
+    if(!IsBestTradingSessionM5()) {
+        signal.reason = "Outside optimal M5 trading session";
+        return false;
+    }
+    
     return true;
 }
 
@@ -1466,12 +1490,21 @@ void PrintEnhancedSignalInfoM5(BinarySignal &signal) {
 //| ULTIMATE ENHANCEMENT M5: Adaptive Signal Intelligence           |
 //+------------------------------------------------------------------+
 
-// Global adaptive learning variables for M5
+// EMERGENCY Performance monitoring variables for M5
 double g_adaptiveMultiplierM5 = 1.0;
 int g_recentWinsM5 = 0;
 int g_recentLossesM5 = 0;
 int g_adaptivePeriodM5 = 20;
 double g_performanceScoreM5 = 0.0;
+
+// CRITICAL: M5 Emergency performance controls
+int g_dailyTradesM5 = 0;
+int g_dailyWinsM5 = 0;
+int g_dailyLossesM5 = 0;
+double g_dailyWinRateM5 = 0.0;
+int g_emergencyStopLossesM5 = 4;         // Stop after 4 M5 daily losses (stricter)
+bool g_emergencyStopM5 = false;
+datetime g_lastTradeDayM5 = 0;
 
 //+------------------------------------------------------------------+
 //| Adaptive Signal Enhancement M5 (Machine Learning-like)          |
@@ -1479,15 +1512,22 @@ double g_performanceScoreM5 = 0.0;
 double ApplyAdaptiveEnhancementM5(BinarySignal &signal, string symbol) {
     double enhancementFactor = 1.0;
     
-    // 1. PERFORMANCE-BASED ADAPTATION
-    if((g_recentWinsM5 + g_recentLossesM5) >= 10) {
+    // 1. ULTRA AGGRESSIVE M5 PERFORMANCE-BASED ADAPTATION
+    if((g_recentWinsM5 + g_recentLossesM5) >= 4) { // React even faster for M5
         double recentWinRate = (double)g_recentWinsM5 / (g_recentWinsM5 + g_recentLossesM5);
         
-        if(recentWinRate > 0.8) {
-            enhancementFactor *= 1.1; // Increase confidence when performing well
-        } else if(recentWinRate < 0.4) {
-            enhancementFactor *= 0.7; // Decrease confidence when performing poorly
+        if(recentWinRate > 0.75) {
+            enhancementFactor *= 1.03; // Very small boost when good
+        } else if(recentWinRate < 0.5) {
+            enhancementFactor *= 0.3; // MASSIVE penalty when poor
+        } else if(recentWinRate < 0.6) {
+            enhancementFactor *= 0.5; // Strong penalty when mediocre
         }
+    }
+    
+    // ADDITIONAL: Emergency M5 shutdown if recent performance is terrible
+    if((g_recentWinsM5 + g_recentLossesM5) >= 6 && (double)g_recentWinsM5 / (g_recentWinsM5 + g_recentLossesM5) < 0.35) {
+        enhancementFactor *= 0.05; // Nearly shut down M5 system
     }
     
     // 2. MARKET VOLATILITY ADAPTATION
@@ -1684,4 +1724,118 @@ void GetAdaptiveMetricsM5(double &winRate, double &adaptiveMultiplier, int &rece
     winRate = g_performanceScoreM5;
     adaptiveMultiplier = g_adaptiveMultiplierM5;
     recentTrades = g_recentWinsM5 + g_recentLossesM5;
+}
+
+//+------------------------------------------------------------------+
+//| EMERGENCY PERFORMANCE FUNCTIONS M5 TO FIX BAD PERFORMANCE      |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Check M5 Daily Performance and Activate Emergency Stop          |
+//+------------------------------------------------------------------+
+void CheckDailyPerformanceM5() {
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    datetime currentDay = StringToTime(StringFormat("%04d.%02d.%02d 00:00:00", dt.year, dt.mon, dt.day));
+    
+    // Reset daily counters if new day
+    if(currentDay != g_lastTradeDayM5) {
+        g_dailyTradesM5 = 0;
+        g_dailyWinsM5 = 0;
+        g_dailyLossesM5 = 0;
+        g_dailyWinRateM5 = 0.0;
+        g_emergencyStopM5 = false;
+        g_lastTradeDayM5 = currentDay;
+    }
+    
+    // Calculate daily win rate
+    if(g_dailyTradesM5 > 0) {
+        g_dailyWinRateM5 = (double)g_dailyWinsM5 / g_dailyTradesM5;
+    }
+    
+    // EMERGENCY STOP CONDITIONS (stricter for M5)
+    if(g_dailyLossesM5 >= g_emergencyStopLossesM5) {
+        g_emergencyStopM5 = true;
+        Print("🚨 M5 EMERGENCY STOP ACTIVATED - Too many daily losses: ", g_dailyLossesM5);
+    }
+    
+    // Also stop if win rate is terrible after enough trades (stricter for M5)
+    if(g_dailyTradesM5 >= 8 && g_dailyWinRateM5 < 0.35) {
+        g_emergencyStopM5 = true;
+        Print("🚨 M5 EMERGENCY STOP ACTIVATED - Poor daily win rate: ", DoubleToString(g_dailyWinRateM5 * 100, 1), "%");
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Update M5 Daily Performance (Call after each M5 trade)         |
+//+------------------------------------------------------------------+
+void UpdateDailyPerformanceM5(bool wasWin) {
+    g_dailyTradesM5++;
+    if(wasWin) {
+        g_dailyWinsM5++;
+    } else {
+        g_dailyLossesM5++;
+    }
+    
+    // Update overall M5 system
+    UpdateConsecutiveLossesM5(wasWin);
+}
+
+//+------------------------------------------------------------------+
+//| Check if it's the BEST M5 Trading Session (ultra strict)       |
+//+------------------------------------------------------------------+
+bool IsBestTradingSessionM5() {
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    
+    // Only trade during PRIME OVERLAP sessions for M5 (even stricter)
+    if(dt.day_of_week >= 2 && dt.day_of_week <= 4) { // Tue-Thu only
+        // London-NY overlap (13:30-16:30 GMT) - BEST M5 session
+        if(dt.hour >= 13 && dt.hour <= 16 && dt.min >= 30) {
+            return true;
+        }
+        // Asian-London overlap (08:00-09:00 GMT) - Good M5 session  
+        if(dt.hour >= 8 && dt.hour <= 8) {
+            return true;
+        }
+    }
+    
+    return false; // Outside prime time = NO M5 TRADING
+}
+
+//+------------------------------------------------------------------+
+//| ULTRA Enhanced M5 Signal Validation (Super Strict)             |
+//+------------------------------------------------------------------+
+bool ValidateUltraSignalM5(BinarySignal &signal) {
+    // Only allow PERFECT M5 signals
+    if(signal.direction == SIGNAL_NONE) return false;
+    if(signal.confidence < 90.0) return false;         // Ultra high bar for M5
+    if(signal.riskLevel > 2) return false;             // Only lowest risk M5
+    if(signal.totalScore < 110.0) return false;        // Super high M5 score required
+    
+    // ALL M5 confirmations must be true (no exceptions)
+    if(!signal.m15Confirmed) return false;
+    if(!signal.adxConfirmed) return false;
+    if(!signal.volumeConfirmed) return false;
+    if(!signal.marketStructureConfirmed) return false;
+    if(!signal.volatilityConfirmed) return false;
+    if(!signal.newsTimeConfirmed) return false;
+    
+    // Additional ULTRA strict M5 checks
+    if(signal.trendStrength < 0.75) return false;      // Only strong M5 trends
+    if(signal.volatilityLevel > 1.8) return false;     // Avoid high M5 volatility
+    
+    // Market must be in TRENDING condition for M5
+    if(signal.marketCondition != MARKET_TRENDING) return false;
+    
+    return true;
+}
+
+//+------------------------------------------------------------------+
+//| Get M5 Emergency Performance Status                             |
+//+------------------------------------------------------------------+
+void GetEmergencyStatusM5(bool &isEmergencyStop, double &dailyWinRate, int &dailyTrades) {
+    isEmergencyStop = g_emergencyStopM5;
+    dailyWinRate = g_dailyWinRateM5;
+    dailyTrades = g_dailyTradesM5;
 }
