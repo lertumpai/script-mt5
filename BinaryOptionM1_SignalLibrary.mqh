@@ -11,8 +11,8 @@ input bool UseAdvancedFilters = true;          // ใช้ฟิลเตอร
 input bool UseVolatilityFilter = true;         // ฟิลเตอร์ความผันผวน
 input bool UseMarketStructureFilter = true;    // ฟิลเตอร์โครงสร้างตลาด
 input bool UseNewsTimeFilter = true;           // หลีกเลี่ยงช่วงข่าว
-input double MinTrendStrength = 0.7;           // ความแรงของเทรนด์ขั้นต่ำ
-input double MaxVolatilityLevel = 2.0;         // ระดับความผันผวนสูงสุด
+input double MinTrendStrength = 0.75;          // ความแรงของเทรนด์ขั้นต่ำ M1 (high standard)
+input double MaxVolatilityLevel = 1.8;         // ระดับความผันผวนสูงสุด M1 (tighter)
 input int MaxConsecutiveLosses = 3;            // จำนวนแพ้ติดกันสูงสุด
 
 //--- Enums
@@ -201,20 +201,20 @@ bool InitializeBinarySignalSystem(string symbol, bool useCustomParams, SignalPar
 //| Set Enhanced Default Parameters                                  |
 //+------------------------------------------------------------------+
 void SetDefaultParameters() {
-    // Basic indicators (more conservative)
-    g_params.emaFast = 21;
-    g_params.emaSlow = 55;
-    g_params.rsiPeriod = 14;
-    g_params.macdFast = 12;
-    g_params.macdSlow = 26;
-    g_params.macdSignal = 9;
-    g_params.stochK = 14;
-    g_params.stochD = 3;
-    g_params.stochSlowing = 3;
-    g_params.bbPeriod = 20;
-    g_params.bbDeviation = 2.0;
-    g_params.adxPeriod = 14;
-    g_params.volumeMAPeriod = 20;
+    // OPTIMIZED M1 indicators (ultra-responsive for scalping)
+    g_params.emaFast = 8;               // Very fast for M1 scalping
+    g_params.emaSlow = 21;              // Quick trend detection for M1
+    g_params.rsiPeriod = 9;             // More sensitive RSI for M1
+    g_params.macdFast = 8;              // Faster MACD for M1
+    g_params.macdSlow = 17;             // Faster MACD for M1
+    g_params.macdSignal = 6;            // Quicker signals for M1
+    g_params.stochK = 9;                // More sensitive Stochastic
+    g_params.stochD = 3;                // Quick smoothing
+    g_params.stochSlowing = 2;          // Less smoothing for M1
+    g_params.bbPeriod = 15;             // Faster BB reaction for M1
+    g_params.bbDeviation = 1.8;         // Slightly tighter bands for M1
+    g_params.adxPeriod = 10;            // Faster trend detection for M1
+    g_params.volumeMAPeriod = 12;       // Quick volume analysis for M1
     
     // ULTRA STRICT thresholds (emergency performance fix)
     g_params.minConfidence = 95.0;              // Only elite signals
@@ -222,19 +222,19 @@ void SetDefaultParameters() {
     g_params.moderateSignalThreshold = 100.0;   // Very high threshold
     g_params.weakSignalThreshold = 80.0;        // No weak signals allowed
     
-    // ULTRA STRICT ADX filters (emergency performance)
+    // OPTIMIZED M1 ADX filters (responsive trend detection)
     g_params.useADXFilter = true;
-    g_params.minADXLevel = 30.0;                // Higher minimum
-    g_params.maxADXLevel = 70.0;                // Lower maximum (avoid chaos)
+    g_params.minADXLevel = 25.0;                // Moderate minimum for M1 responsiveness
+    g_params.maxADXLevel = 75.0;                // Allow higher maximum for M1 volatility
     
-    // Volatility settings
-    g_params.atrPeriod = 14;
-    g_params.minATR = 0.0001;                   // Minimum volatility required
-    g_params.maxATR = 0.0050;                   // Maximum volatility allowed
+    // OPTIMIZED M1 Volatility settings (sensitive)
+    g_params.atrPeriod = 8;                     // Faster ATR for M1
+    g_params.minATR = 0.00005;                  // Lower minimum for M1 sensitivity
+    g_params.maxATR = 0.0030;                   // Lower maximum for M1 control
     
-    // Market structure
-    g_params.swingPeriod = 10;
-    g_params.minSwingSize = 10.0;               // Points
+    // OPTIMIZED M1 Market structure (quick swings)
+    g_params.swingPeriod = 6;                   // Shorter swing detection for M1
+    g_params.minSwingSize = 8.0;                // Smaller swing requirement for M1
     
     // Other filters
     g_params.useMultiTimeframe = true;
@@ -392,7 +392,7 @@ double CalculateTrendScore(string symbol) {
     
     // 3. EMA Distance and Strength (±15 points)
     double distance = MathAbs(emaFast[0] - emaSlow[0]) / SymbolInfoDouble(symbol, SYMBOL_POINT);
-    double normalizedDistance = MathMin(distance / 50.0, 1.0); // More sensitive
+    double normalizedDistance = MathMin(distance / 30.0, 1.0); // M1 ultra-sensitive
     
     if(currentCross) {
         score += normalizedDistance * 15.0;

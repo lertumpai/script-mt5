@@ -11,8 +11,8 @@ input bool UseAdvancedFilters = true;          // ใช้ฟิลเตอร
 input bool UseVolatilityFilter = true;         // ฟิลเตอร์ความผันผวน
 input bool UseMarketStructureFilter = true;    // ฟิลเตอร์โครงสร้างตลาด
 input bool UseNewsTimeFilter = true;           // หลีกเลี่ยงช่วงข่าว
-input double MinTrendStrength = 0.65;          // ความแรงของเทรนด์ขั้นต่ำ (M5 adjusted)
-input double MaxVolatilityLevel = 2.2;         // ระดับความผันผวนสูงสุด (M5 adjusted)
+input double MinTrendStrength = 0.68;          // ความแรงของเทรนด์ขั้นต่ำ M5 (moderate)
+input double MaxVolatilityLevel = 2.5;         // ระดับความผันผวนสูงสุด M5 (more tolerance)
 input int MaxConsecutiveLosses = 3;            // จำนวนแพ้ติดกันสูงสุด
 input int DataIndex = 2; // Bar index for signal calculation (1=live, 2=backtest recommended)
 
@@ -199,20 +199,20 @@ bool InitializeBinarySignalSystemM5(string symbol, bool useCustomParams, SignalP
 //| Set Enhanced Default Parameters for M5                          |
 //+------------------------------------------------------------------+
 void SetDefaultParametersM5() {
-    // Basic indicators (adjusted for M5 timeframe - more conservative)
-    g_params.emaFast = 18;              // Slightly slower for M5 stability
-    g_params.emaSlow = 45;              // More conservative
-    g_params.rsiPeriod = 14;
-    g_params.macdFast = 10;             // Balanced for M5
-    g_params.macdSlow = 21;             // Balanced for M5
-    g_params.macdSignal = 9;
-    g_params.stochK = 14;
-    g_params.stochD = 3;
-    g_params.stochSlowing = 3;
-    g_params.bbPeriod = 20;
-    g_params.bbDeviation = 2.0;
-    g_params.adxPeriod = 14;
-    g_params.volumeMAPeriod = 16;       // Adjusted for M5
+    // OPTIMIZED M5 indicators (balanced stability and responsiveness)
+    g_params.emaFast = 13;              // Medium-fast for M5 balance
+    g_params.emaSlow = 34;              // Fibonacci-based for M5
+    g_params.rsiPeriod = 21;            // Longer RSI for M5 stability
+    g_params.macdFast = 12;             // Standard MACD for M5
+    g_params.macdSlow = 26;             // Standard MACD for M5
+    g_params.macdSignal = 9;            // Standard signal for M5
+    g_params.stochK = 21;               // Longer Stochastic for M5
+    g_params.stochD = 5;                // More smoothing for M5
+    g_params.stochSlowing = 5;          // More smoothing for M5 stability
+    g_params.bbPeriod = 24;             // Longer BB for M5 stability
+    g_params.bbDeviation = 2.1;         // Slightly wider bands for M5
+    g_params.adxPeriod = 18;            // Longer ADX for M5 trend detection
+    g_params.volumeMAPeriod = 20;       // Standard volume analysis for M5
     
     // ULTRA STRICT thresholds M5 (emergency performance fix)
     g_params.minConfidence = 90.0;              // Only elite M5 signals
@@ -220,19 +220,19 @@ void SetDefaultParametersM5() {
     g_params.moderateSignalThreshold = 95.0;    // Very high M5 threshold
     g_params.weakSignalThreshold = 75.0;        // No weak M5 signals
     
-    // ADX filters (stricter)
+    // OPTIMIZED M5 ADX filters (stable trend detection)
     g_params.useADXFilter = true;
-    g_params.minADXLevel = 22.0;                // Adjusted for M5
-    g_params.maxADXLevel = 75.0;                // Avoid over-trending
+    g_params.minADXLevel = 28.0;                // Higher minimum for M5 stability
+    g_params.maxADXLevel = 80.0;                // Higher maximum for M5 tolerance
     
-    // Volatility settings (adjusted for M5)
-    g_params.atrPeriod = 14;
-    g_params.minATR = 0.0002;                   // Minimum volatility required
-    g_params.maxATR = 0.0080;                   // Maximum volatility allowed (higher for M5)
+    // OPTIMIZED M5 Volatility settings (stable)
+    g_params.atrPeriod = 20;                    // Longer ATR for M5 stability
+    g_params.minATR = 0.0003;                   // Higher minimum for M5 (avoid noise)
+    g_params.maxATR = 0.0120;                   // Higher maximum for M5 (more tolerance)
     
-    // Market structure (adjusted for M5)
-    g_params.swingPeriod = 8;                   // Shorter for M5
-    g_params.minSwingSize = 15.0;               // Points (adjusted for M5)
+    // OPTIMIZED M5 Market structure (stable swings)
+    g_params.swingPeriod = 12;                  // Longer swing detection for M5 stability
+    g_params.minSwingSize = 25.0;               // Larger swing requirement for M5
     
     // Other filters
     g_params.useMultiTimeframe = true;
@@ -369,7 +369,7 @@ double CalculateTrendScoreM5(string symbol) {
     
     // 3. EMA Distance and Strength (±15 points) - adjusted for M5
     double distance = MathAbs(emaFast[0] - emaSlow[0]) / SymbolInfoDouble(symbol, SYMBOL_POINT);
-    double normalizedDistance = MathMin(distance / 80.0, 1.0); // Adjusted for M5 (more sensitive)
+    double normalizedDistance = MathMin(distance / 100.0, 1.0); // M5 balanced sensitivity
     
     if(currentCross) {
         score += normalizedDistance * 15.0;
