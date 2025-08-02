@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                        XGBoostSignalLibrary.mqh |
+//|                                    XGBoostSignalLibrary_Backtest.mqh |
 //|                                  Copyright 2024, MetaQuotes Ltd. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
@@ -9,15 +9,16 @@
 #property strict
 
 //+------------------------------------------------------------------+
-//| XGBoost Binary Option Signal Library - Updated from OHLC Data   |
-//| ใช้สำหรับสร้างสัญญาณ CALL/PUT จาก XGBoost model ที่เทรนจาก ohlc.csv |
+//| XGBoost Binary Option Signal Library - Backtest Version         |
+//| ใช้สำหรับ Backtest โดยใช้ข้อมูลย้อนหลัง t-2                     |
+//| สคริป Backtest จะใช้ t-1 ได้                                     |
 //+------------------------------------------------------------------+
 
 //--- Library parameters
 input int    InpLookback = 20;        // Lookback period for features
 input double InpWinRateThreshold = 0.6; // Win rate threshold (60%)
 input bool   InpShowDebug = false;     // Show debug information
-input int    InpDataOffset = 1;        // Data offset for backtest (1=t-1, 0=current)
+input int    InpBarOffset = 2;         // Bar offset for backtest (t-2)
 
 //--- Global variables
 double g_features[21];  // 21 features
@@ -31,17 +32,18 @@ void InitXGBoostLibrary()
 {
     if(InpShowDebug)
     {
-        Print("=== XGBoost Signal Library Initialized (Updated from OHLC Data) ===");
+        Print("=== XGBoost Signal Library Initialized (Backtest Version) ===");
         Print("Features: 21");
         Print("Win Rate Threshold: ", InpWinRateThreshold * 100, "%");
+        Print("Bar Offset: ", InpBarOffset, " (t-", InpBarOffset, ")");
         Print("Data Source: ohlc.csv (372,304 records)");
-        Print("Data Offset: ", InpDataOffset, " (", (InpDataOffset == 1 ? "t-1 for backtest" : "current bar"), ")");
     }
 }
 
 //+------------------------------------------------------------------+
 //| Get Signal Function - Main Library Function                     |
 //| Returns: 1 for CALL, -1 for PUT, 0 for no signal              |
+//| Uses historical data for backtest compatibility                 |
 //+------------------------------------------------------------------+
 int GetSignal()
 {
@@ -49,7 +51,7 @@ int GetSignal()
     datetime current_time = TimeCurrent();
     if(current_time == g_last_signal_time) return 0;
     
-    // คำนวณ features
+    // คำนวณ features จากข้อมูลย้อนหลัง
     if(!CalculateFeatures())
         return 0;
     
@@ -67,109 +69,110 @@ int GetSignal()
 }
 
 //+------------------------------------------------------------------+
-//| Calculate technical features                                    |
+//| Calculate technical features from historical data (t-2)         |
 //+------------------------------------------------------------------+
 bool CalculateFeatures()
 {
-    if(Bars(_Symbol, PERIOD_M1) < InpLookback + 20 + InpDataOffset)
+    if(Bars(_Symbol, PERIOD_M1) < InpLookback + 20 + InpBarOffset)
         return false;
     
-    // ข้อมูลราคาปัจจุบัน (ใช้ offset สำหรับ backtest)
-    double close = iClose(_Symbol, PERIOD_M1, InpDataOffset);
-    double open = iOpen(_Symbol, PERIOD_M1, InpDataOffset);
-    double high = iHigh(_Symbol, PERIOD_M1, InpDataOffset);
-    double low = iLow(_Symbol, PERIOD_M1, InpDataOffset);
-    double prev_close = iClose(_Symbol, PERIOD_M1, InpDataOffset + 1);
+    // ข้อมูลราคาจาก t-2 (สำหรับ backtest)
+    double close = iClose(_Symbol, PERIOD_M1, InpBarOffset);
+    double open = iOpen(_Symbol, PERIOD_M1, InpBarOffset);
+    double high = iHigh(_Symbol, PERIOD_M1, InpBarOffset);
+    double low = iLow(_Symbol, PERIOD_M1, InpBarOffset);
+    double prev_close = iClose(_Symbol, PERIOD_M1, InpBarOffset + 1);
     
-    // 1. price_change
+    // 1. price_change (t-2)
     g_features[0] = (close - prev_close) / prev_close;
     
-    // 2. high_low_ratio
+    // 2. high_low_ratio (t-2)
     g_features[1] = high / low;
     
-    // 3. close_open_ratio
+    // 3. close_open_ratio (t-2)
     g_features[2] = close / open;
     
-    // 4-6. price_vs_ma
-    double ma5 = CalculateMA(5);
-    double ma10 = CalculateMA(10);
-    double ma20 = CalculateMA(20);
+    // 4-6. price_vs_ma (t-2)
+    double ma5 = CalculateMA(5, InpBarOffset);
+    double ma10 = CalculateMA(10, InpBarOffset);
+    double ma20 = CalculateMA(20, InpBarOffset);
     
     g_features[3] = close / ma5 - 1;  // price_vs_ma5
     g_features[4] = close / ma10 - 1; // price_vs_ma10
     g_features[5] = close / ma20 - 1; // price_vs_ma20
     
-    // 7-8. volatility
-    g_features[6] = CalculateVolatility(5);
-    g_features[7] = CalculateVolatility(10);
+    // 7-8. volatility (t-2)
+    g_features[6] = CalculateVolatility(5, InpBarOffset);
+    g_features[7] = CalculateVolatility(10, InpBarOffset);
     
-    // 9-10. RSI
-    g_features[8] = CalculateRSI(5);
-    g_features[9] = CalculateRSI(10);
+    // 9-10. RSI (t-2)
+    g_features[8] = CalculateRSI(5, InpBarOffset);
+    g_features[9] = CalculateRSI(10, InpBarOffset);
     
-    // 11-12. momentum
-    g_features[10] = close / iClose(_Symbol, PERIOD_M1, InpDataOffset + 3) - 1;
-    g_features[11] = close / iClose(_Symbol, PERIOD_M1, InpDataOffset + 5) - 1;
+    // 11-12. momentum (t-2)
+    g_features[10] = close / iClose(_Symbol, PERIOD_M1, InpBarOffset + 3) - 1;
+    g_features[11] = close / iClose(_Symbol, PERIOD_M1, InpBarOffset + 5) - 1;
     
-    // 13. volume_proxy
+    // 13. volume_proxy (t-2)
     g_features[12] = MathAbs(close - open) / open;
     
-    // 14-16. time features
+    // 14-16. time features (t-2)
     MqlDateTime dt;
-    TimeToStruct(TimeCurrent(), dt);
+    TimeToStruct(iTime(_Symbol, PERIOD_M1, InpBarOffset), dt);
     g_features[13] = dt.hour;
     g_features[14] = dt.min;
     g_features[15] = dt.day_of_week;
     
-    // 17-19. candle patterns
+    // 17-19. candle patterns (t-2)
     g_features[16] = MathAbs(close - open); // body_size
     g_features[17] = high - MathMax(open, close); // upper_shadow
     g_features[18] = MathMin(open, close) - low; // lower_shadow
     
-    // 20-21. trend
-    g_features[19] = (close > iClose(_Symbol, PERIOD_M1, InpDataOffset + 5)) ? 1 : 0;
-    g_features[20] = (close > iClose(_Symbol, PERIOD_M1, InpDataOffset + 10)) ? 1 : 0;
+    // 20-21. trend (t-2)
+    g_features[19] = (close > iClose(_Symbol, PERIOD_M1, InpBarOffset + 5)) ? 1 : 0;
+    g_features[20] = (close > iClose(_Symbol, PERIOD_M1, InpBarOffset + 10)) ? 1 : 0;
     
     if(InpShowDebug)
     {
-        Print("Features calculated (offset: ", InpDataOffset, "):");
+        Print("Features calculated (t-", InpBarOffset, "):");
         Print("Price change: ", g_features[0]);
         Print("RSI 5: ", g_features[8]);
         Print("Trend 5: ", g_features[19]);
+        Print("Bar time: ", TimeToString(iTime(_Symbol, PERIOD_M1, InpBarOffset)));
     }
     
     return true;
 }
 
 //+------------------------------------------------------------------+
-//| Calculate Moving Average                                       |
+//| Calculate Moving Average with offset                            |
 //+------------------------------------------------------------------+
-double CalculateMA(int period)
+double CalculateMA(int period, int offset)
 {
     double sum = 0;
     for(int i = 0; i < period; i++)
     {
-        sum += iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
+        sum += iClose(_Symbol, PERIOD_M1, offset + i);
     }
     return sum / period;
 }
 
 //+------------------------------------------------------------------+
-//| Calculate Volatility                                          |
+//| Calculate Volatility with offset                               |
 //+------------------------------------------------------------------+
-double CalculateVolatility(int period)
+double CalculateVolatility(int period, int offset)
 {
     double mean = 0;
     for(int i = 0; i < period; i++)
     {
-        mean += iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
+        mean += iClose(_Symbol, PERIOD_M1, offset + i);
     }
     mean /= period;
     
     double variance = 0;
     for(int i = 0; i < period; i++)
     {
-        double diff = iClose(_Symbol, PERIOD_M1, InpDataOffset + i) - mean;
+        double diff = iClose(_Symbol, PERIOD_M1, offset + i) - mean;
         variance += diff * diff;
     }
     variance /= period;
@@ -178,15 +181,15 @@ double CalculateVolatility(int period)
 }
 
 //+------------------------------------------------------------------+
-//| Calculate RSI                                                 |
+//| Calculate RSI with offset                                      |
 //+------------------------------------------------------------------+
-double CalculateRSI(int period)
+double CalculateRSI(int period, int offset)
 {
     double gains = 0, losses = 0;
     
     for(int i = 1; i <= period; i++)
     {
-        double change = iClose(_Symbol, PERIOD_M1, InpDataOffset + i-1) - iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
+        double change = iClose(_Symbol, PERIOD_M1, offset + i - 1) - iClose(_Symbol, PERIOD_M1, offset + i);
         if(change > 0)
             gains += change;
         else
@@ -517,6 +520,90 @@ double GetSignalStrength()
     
     // แปลงเป็นความน่าจะเป็น
     return 1.0 / (1.0 + MathExp(-prediction));
+}
+
+//+------------------------------------------------------------------+
+//| Get Signal for Specific Bar (for backtest)                     |
+//| Returns: 1 for CALL, -1 for PUT, 0 for no signal              |
+//+------------------------------------------------------------------+
+int GetSignalForBar(int bar_index)
+{
+    // ตรวจสอบข้อมูล
+    if(Bars(_Symbol, PERIOD_M1) < InpLookback + 20 + bar_index)
+        return 0;
+    
+    // คำนวณ features จาก bar ที่ระบุ
+    if(!CalculateFeaturesForBar(bar_index))
+        return 0;
+    
+    // ทำนายผลลัพธ์
+    int prediction = PredictSignal();
+    
+    return prediction;
+}
+
+//+------------------------------------------------------------------+
+//| Calculate features for specific bar (for backtest)             |
+//+------------------------------------------------------------------+
+bool CalculateFeaturesForBar(int bar_index)
+{
+    // ข้อมูลราคาจาก bar ที่ระบุ
+    double close = iClose(_Symbol, PERIOD_M1, bar_index);
+    double open = iOpen(_Symbol, PERIOD_M1, bar_index);
+    double high = iHigh(_Symbol, PERIOD_M1, bar_index);
+    double low = iLow(_Symbol, PERIOD_M1, bar_index);
+    double prev_close = iClose(_Symbol, PERIOD_M1, bar_index + 1);
+    
+    // 1. price_change
+    g_features[0] = (close - prev_close) / prev_close;
+    
+    // 2. high_low_ratio
+    g_features[1] = high / low;
+    
+    // 3. close_open_ratio
+    g_features[2] = close / open;
+    
+    // 4-6. price_vs_ma
+    double ma5 = CalculateMA(5, bar_index);
+    double ma10 = CalculateMA(10, bar_index);
+    double ma20 = CalculateMA(20, bar_index);
+    
+    g_features[3] = close / ma5 - 1;  // price_vs_ma5
+    g_features[4] = close / ma10 - 1; // price_vs_ma10
+    g_features[5] = close / ma20 - 1; // price_vs_ma20
+    
+    // 7-8. volatility
+    g_features[6] = CalculateVolatility(5, bar_index);
+    g_features[7] = CalculateVolatility(10, bar_index);
+    
+    // 9-10. RSI
+    g_features[8] = CalculateRSI(5, bar_index);
+    g_features[9] = CalculateRSI(10, bar_index);
+    
+    // 11-12. momentum
+    g_features[10] = close / iClose(_Symbol, PERIOD_M1, bar_index + 3) - 1;
+    g_features[11] = close / iClose(_Symbol, PERIOD_M1, bar_index + 5) - 1;
+    
+    // 13. volume_proxy
+    g_features[12] = MathAbs(close - open) / open;
+    
+    // 14-16. time features
+    MqlDateTime dt;
+    TimeToStruct(iTime(_Symbol, PERIOD_M1, bar_index), dt);
+    g_features[13] = dt.hour;
+    g_features[14] = dt.min;
+    g_features[15] = dt.day_of_week;
+    
+    // 17-19. candle patterns
+    g_features[16] = MathAbs(close - open); // body_size
+    g_features[17] = high - MathMax(open, close); // upper_shadow
+    g_features[18] = MathMin(open, close) - low; // lower_shadow
+    
+    // 20-21. trend
+    g_features[19] = (close > iClose(_Symbol, PERIOD_M1, bar_index + 5)) ? 1 : 0;
+    g_features[20] = (close > iClose(_Symbol, PERIOD_M1, bar_index + 10)) ? 1 : 0;
+    
+    return true;
 }
 
 //+------------------------------------------------------------------+ 
