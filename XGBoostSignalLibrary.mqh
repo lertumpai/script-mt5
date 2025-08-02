@@ -17,6 +17,7 @@
 input int    InpLookback = 20;        // Lookback period for features
 input double InpWinRateThreshold = 0.6; // Win rate threshold (60%)
 input bool   InpShowDebug = false;     // Show debug information
+input int    InpDataOffset = 1;        // Data offset for backtest (1=t-1, 0=current)
 
 //--- Global variables
 double g_features[21];  // 21 features
@@ -33,6 +34,7 @@ void InitXGBoostLibrary()
         Print("=== XGBoost Signal Library Initialized ===");
         Print("Features: 21");
         Print("Win Rate Threshold: ", InpWinRateThreshold * 100, "%");
+        Print("Data Offset: ", InpDataOffset, " (", (InpDataOffset == 1 ? "t-1 for backtest" : "current bar"), ")");
     }
 }
 
@@ -68,15 +70,15 @@ int GetSignal()
 //+------------------------------------------------------------------+
 bool CalculateFeatures()
 {
-    if(Bars(_Symbol, PERIOD_M1) < InpLookback + 20)
+    if(Bars(_Symbol, PERIOD_M1) < InpLookback + 20 + InpDataOffset)
         return false;
     
-    // ข้อมูลราคาปัจจุบัน
-    double close = iClose(_Symbol, PERIOD_M1, 0);
-    double open = iOpen(_Symbol, PERIOD_M1, 0);
-    double high = iHigh(_Symbol, PERIOD_M1, 0);
-    double low = iLow(_Symbol, PERIOD_M1, 0);
-    double prev_close = iClose(_Symbol, PERIOD_M1, 1);
+    // ข้อมูลราคาปัจจุบัน (ใช้ offset สำหรับ backtest)
+    double close = iClose(_Symbol, PERIOD_M1, InpDataOffset);
+    double open = iOpen(_Symbol, PERIOD_M1, InpDataOffset);
+    double high = iHigh(_Symbol, PERIOD_M1, InpDataOffset);
+    double low = iLow(_Symbol, PERIOD_M1, InpDataOffset);
+    double prev_close = iClose(_Symbol, PERIOD_M1, InpDataOffset + 1);
     
     // 1. price_change
     g_features[0] = (close - prev_close) / prev_close;
@@ -105,8 +107,8 @@ bool CalculateFeatures()
     g_features[9] = CalculateRSI(10);
     
     // 11-12. momentum
-    g_features[10] = close / iClose(_Symbol, PERIOD_M1, 3) - 1;
-    g_features[11] = close / iClose(_Symbol, PERIOD_M1, 5) - 1;
+    g_features[10] = close / iClose(_Symbol, PERIOD_M1, InpDataOffset + 3) - 1;
+    g_features[11] = close / iClose(_Symbol, PERIOD_M1, InpDataOffset + 5) - 1;
     
     // 13. volume_proxy
     g_features[12] = MathAbs(close - open) / open;
@@ -124,12 +126,12 @@ bool CalculateFeatures()
     g_features[18] = MathMin(open, close) - low; // lower_shadow
     
     // 20-21. trend
-    g_features[19] = (close > iClose(_Symbol, PERIOD_M1, 5)) ? 1 : 0;
-    g_features[20] = (close > iClose(_Symbol, PERIOD_M1, 10)) ? 1 : 0;
+    g_features[19] = (close > iClose(_Symbol, PERIOD_M1, InpDataOffset + 5)) ? 1 : 0;
+    g_features[20] = (close > iClose(_Symbol, PERIOD_M1, InpDataOffset + 10)) ? 1 : 0;
     
     if(InpShowDebug)
     {
-        Print("Features calculated:");
+        Print("Features calculated (offset: ", InpDataOffset, "):");
         Print("Price change: ", g_features[0]);
         Print("RSI 5: ", g_features[8]);
         Print("Trend 5: ", g_features[19]);
@@ -146,7 +148,7 @@ double CalculateMA(int period)
     double sum = 0;
     for(int i = 0; i < period; i++)
     {
-        sum += iClose(_Symbol, PERIOD_M1, i);
+        sum += iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
     }
     return sum / period;
 }
@@ -159,14 +161,14 @@ double CalculateVolatility(int period)
     double mean = 0;
     for(int i = 0; i < period; i++)
     {
-        mean += iClose(_Symbol, PERIOD_M1, i);
+        mean += iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
     }
     mean /= period;
     
     double variance = 0;
     for(int i = 0; i < period; i++)
     {
-        double diff = iClose(_Symbol, PERIOD_M1, i) - mean;
+        double diff = iClose(_Symbol, PERIOD_M1, InpDataOffset + i) - mean;
         variance += diff * diff;
     }
     variance /= period;
@@ -183,7 +185,7 @@ double CalculateRSI(int period)
     
     for(int i = 1; i <= period; i++)
     {
-        double change = iClose(_Symbol, PERIOD_M1, i-1) - iClose(_Symbol, PERIOD_M1, i);
+        double change = iClose(_Symbol, PERIOD_M1, InpDataOffset + i-1) - iClose(_Symbol, PERIOD_M1, InpDataOffset + i);
         if(change > 0)
             gains += change;
         else
@@ -484,4 +486,34 @@ int GetLastSignal()
 //+------------------------------------------------------------------+
 //| Get Signal Strength Function                                   |
 //| Returns: Probability value (0.0 to 1.0)                       |
-//+------------------------------------------------------------------+ 
+//+------------------------------------------------------------------+
+double GetSignalStrength()
+{
+    // คำนวณ features
+    if(!CalculateFeatures())
+        return 0.0;
+    
+    // คำนวณผลลัพธ์จากต้นไม้ทั้งหมด
+    double prediction = 0;
+    
+    // ต้นไม้ที่ 1-10
+    prediction += PredictTree1();
+    prediction += PredictTree2();
+    prediction += PredictTree3();
+    prediction += PredictTree4();
+    prediction += PredictTree5();
+    prediction += PredictTree6();
+    prediction += PredictTree7();
+    prediction += PredictTree8();
+    prediction += PredictTree9();
+    prediction += PredictTree10();
+    
+    // ต้นไม้ที่ 11-50
+    for(int i = 11; i <= 50; i++)
+    {
+        prediction += PredictTreeGeneric(i);
+    }
+    
+    // แปลงเป็นความน่าจะเป็น
+    return 1.0 / (1.0 + MathExp(-prediction));
+} 
