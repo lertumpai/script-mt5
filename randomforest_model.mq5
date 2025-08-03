@@ -54,10 +54,10 @@ void calculateFeatures(double &features[])
     features[2] = open / close; // open_close_ratio
     
     // Moving averages
-    double ma5 = iMA(Symbol(), Period(), 5, 0, MODE_SMA, PRICE_CLOSE, 0);
-    double ma10 = iMA(Symbol(), Period(), 10, 0, MODE_SMA, PRICE_CLOSE, 0);
-    double ma20 = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE, 0);
-    double ma50 = iMA(Symbol(), Period(), 50, 0, MODE_SMA, PRICE_CLOSE, 0);
+    double ma5 = iMA(Symbol(), Period(), 5, 0, MODE_SMA, PRICE_CLOSE);
+    double ma10 = iMA(Symbol(), Period(), 10, 0, MODE_SMA, PRICE_CLOSE);
+    double ma20 = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
+    double ma50 = iMA(Symbol(), Period(), 50, 0, MODE_SMA, PRICE_CLOSE);
     
     features[3] = close / ma5; // ma_5_ratio
     features[4] = close / ma10; // ma_10_ratio
@@ -65,11 +65,11 @@ void calculateFeatures(double &features[])
     features[6] = close / ma50; // ma_50_ratio
     
     // RSI
-    features[7] = iRSI(Symbol(), Period(), 14, PRICE_CLOSE, 0); // rsi
+    features[7] = iRSI(Symbol(), Period(), 14, PRICE_CLOSE); // rsi
     
     // Bollinger Bands
-    double bb_middle = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE, 0);
-    double bb_std = iStdDev(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE, 0);
+    double bb_middle = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
+    double bb_std = iStdDev(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
     double bb_upper = bb_middle + (bb_std * 2);
     double bb_lower = bb_middle - (bb_std * 2);
     features[8] = (close - bb_lower) / (bb_upper - bb_lower); // bb_position

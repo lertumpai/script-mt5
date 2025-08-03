@@ -18,11 +18,21 @@ input int MAGIC_NUMBER = 12345;         // Magic number for orders
 input int MAX_ORDERS = 3;               // Maximum concurrent orders
 input double STOP_LOSS_PIPS = 20;       // Stop loss in pips
 input double TAKE_PROFIT_PIPS = 40;     // Take profit in pips
+input int OFFSET_BAR = 1;               // Offset bar for analysis (T-1 for current, T-2 for analysis)
 
 // Global variables
 datetime last_prediction_time = 0;
 int total_orders = 0;
 double last_probability = 0;
+
+// Indicator handles
+int ma5_handle;
+int ma10_handle;
+int ma20_handle;
+int ma50_handle;
+int rsi_handle;
+int bb_handle;
+int std_dev_handle;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -32,12 +42,36 @@ int OnInit()
     // Initialize ML model
     initializeModelParameters();
     
+    // Initialize indicators
+    ma5_handle = iMA(Symbol(), Period(), 5, 0, MODE_SMA, PRICE_CLOSE);
+    ma10_handle = iMA(Symbol(), Period(), 10, 0, MODE_SMA, PRICE_CLOSE);
+    ma20_handle = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
+    ma50_handle = iMA(Symbol(), Period(), 50, 0, MODE_SMA, PRICE_CLOSE);
+    rsi_handle = iRSI(Symbol(), Period(), 14, PRICE_CLOSE);
+    bb_handle = iMA(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
+    std_dev_handle = iStdDev(Symbol(), Period(), 20, 0, MODE_SMA, PRICE_CLOSE);
+    
+    // Check if indicators are created successfully
+    if(ma5_handle == INVALID_HANDLE || ma10_handle == INVALID_HANDLE || 
+       ma20_handle == INVALID_HANDLE || ma50_handle == INVALID_HANDLE ||
+       rsi_handle == INVALID_HANDLE || bb_handle == INVALID_HANDLE ||
+       std_dev_handle == INVALID_HANDLE)
+    {
+        Print("Error creating indicators");
+        return(INIT_FAILED);
+    }
+    
+    // Set indicator handles in library
+    setIndicatorHandles(ma5_handle, ma10_handle, ma20_handle, ma50_handle,
+                       rsi_handle, bb_handle, std_dev_handle);
+    
     Print("Binary Option ML Trading EA Initialized");
     Print("Model: Enhanced ExtraTrees");
     Print("Buy Threshold: ", BUY_THRESHOLD);
     Print("Sell Threshold: ", SELL_THRESHOLD);
     Print("Prediction Period: ", PREDICTION_PERIOD, " minutes");
     Print("Trading Enabled: ", ENABLE_TRADING);
+    Print("Offset Bar: ", OFFSET_BAR);
     
     return(INIT_SUCCEEDED);
 }
@@ -47,6 +81,15 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+    // Release indicator handles
+    if(ma5_handle != INVALID_HANDLE) IndicatorRelease(ma5_handle);
+    if(ma10_handle != INVALID_HANDLE) IndicatorRelease(ma10_handle);
+    if(ma20_handle != INVALID_HANDLE) IndicatorRelease(ma20_handle);
+    if(ma50_handle != INVALID_HANDLE) IndicatorRelease(ma50_handle);
+    if(rsi_handle != INVALID_HANDLE) IndicatorRelease(rsi_handle);
+    if(bb_handle != INVALID_HANDLE) IndicatorRelease(bb_handle);
+    if(std_dev_handle != INVALID_HANDLE) IndicatorRelease(std_dev_handle);
+    
     Print("Binary Option ML Trading EA Deinitialized");
 }
 
@@ -60,12 +103,12 @@ void OnTick()
     // Make prediction every minute
     if(current_time - last_prediction_time >= 60)
     {
-        // Get trading signal
-        string signal = getTradingSignal(BUY_THRESHOLD, SELL_THRESHOLD);
-        double probability = predictProbability();
+        // Get trading signal with offset bar
+        string signal = getTradingSignal(BUY_THRESHOLD, SELL_THRESHOLD, OFFSET_BAR);
+        double probability = predictProbability(OFFSET_BAR);
         last_probability = probability;
         
-        Print("Signal: ", signal, " - Probability: ", DoubleToString(probability, 4));
+        Print("Signal: ", signal, " - Probability: ", DoubleToString(probability, 4), " - Offset: ", OFFSET_BAR);
         
         // Execute trading logic
         if(ENABLE_TRADING)
