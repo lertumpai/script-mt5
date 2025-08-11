@@ -8,14 +8,18 @@ void PrintPrice(int shift) {
    Print("Time[", iTime(_Symbol, PERIOD_M1, shift), "]","-> open: ", iOpen(_Symbol, PERIOD_M1, shift), ", high: ", iHigh(_Symbol, PERIOD_M1, shift), ", low: ", iLow(_Symbol, PERIOD_M1, shift), ", close: ", iClose(_Symbol, PERIOD_M1, shift));
 }
 
+string GetSystemName() {
+   return "candle_v2";
+}
+
 //---- Logistic-style score learned from your CSV (ALL-DAY model)
 // Decision boundary: score >= 0 -> CALL, else PUT
 double PredictSignal()
 {
-   Print(0);
-   Print(1);
-   Print(2);
-   Print(3);
+   PrintPrice(0);
+   PrintPrice(1);
+   PrintPrice(2);
+   PrintPrice(3);
 
    // Current + lagged features
    double body0 = CandleBody(0);

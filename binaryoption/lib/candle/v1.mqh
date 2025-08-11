@@ -8,6 +8,10 @@ void PrintPrice(int shift) {
    Print("Time[", iTime(_Symbol, PERIOD_M1, shift), "]","-> open: ", iOpen(_Symbol, PERIOD_M1, shift), ", high: ", iHigh(_Symbol, PERIOD_M1, shift), ", low: ", iLow(_Symbol, PERIOD_M1, shift), ", close: ", iClose(_Symbol, PERIOD_M1, shift));
 }
 
+string GetSystemName() {
+   return "candle_v1";
+}
+
 double PredictSignal()
 {
    Print(0);
