@@ -41,7 +41,7 @@ enum result {
 #property indicator_chart_window
 #property indicator_buffers 0
 
-#include "../Include/Lertumpai/random_v2.mqh"
+#include "../Include/Lertumpai/candle_v2.mqh"
 
 //----- Import MT2Trading library
 #import "mt2trading_library.ex5" 
@@ -62,8 +62,8 @@ input bool EnableLog = false;
 double SignalBuffer[];
 
 input brokers Broker = All;
-input martingale MartingaleType = NoMartingale;    // Martingale
-input int MartingaleSteps = 2;                     // Martingale Steps
+input martingale MartingaleType = OnNextSignal;    // Martingale
+input int MartingaleSteps = 9;                     // Martingale Steps
 input double MartingaleCoef = 2.0;                 // Martingale Coefficient
 
 datetime signalTime;
@@ -111,18 +111,24 @@ int OnCalculate(const int rates_total,
     int minuteNow = t.min;
     if (minuteNow == LastSignalMinute) return 0; 
 
-    int signal = GetSignalXGB();
-    SendMT2Signal(signal, "Direction");
+    double score = PredictSignal();
+    
+    if (score == 0) {
+       Print("==========");
+       return rates_total;
+    }
+    
+    SendMT2Signal(score, "Direction");
     LastSignalMinute = minuteNow;
     
     Print("==========");
     return rates_total;
 }
 
-void SendMT2Signal(int direction, string sigName)
+void SendMT2Signal(double score, string sigName)
 {
-   string finalSigname = SignalName + "_" + sigName;
-   string dstr = (direction == 1) ? "CALL" : "PUT";
+   string dstr = (score >= 0) ? "CALL" : "PUT";
+   string finalSigname = "Score: " + DoubleToString(score, 6) + "_" + dstr;
    Print(dstr, " Signal at ", TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS));
    mt2trading(asset, dstr, TradeAmount, ExpiryMinutes, MartingaleType, MartingaleSteps,
 			 MartingaleCoef, Broker, finalSigname, signalID);
