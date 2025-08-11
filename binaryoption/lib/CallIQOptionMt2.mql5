@@ -112,6 +112,7 @@ int OnCalculate(const int rates_total,
     if (minuteNow == LastSignalMinute) return 0; 
 
     double score = PredictSignal();
+    Print("score: ", score);
     
     if (score == 0) {
        Print("==========");
