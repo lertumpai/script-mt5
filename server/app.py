@@ -3,10 +3,11 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Literal, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Security
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from fastapi.security.api_key import APIKeyHeader
 
 # IQ Option API (community lib)
 try:
@@ -72,7 +73,10 @@ class IQSession:
 iq = IQSession()
 
 
-async def auth_guard(x_api_key: Optional[str] = Header(default=None)) -> None:
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def auth_guard(x_api_key: Optional[str] = Security(api_key_header)) -> None:
     if settings.api_key and x_api_key != settings.api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
