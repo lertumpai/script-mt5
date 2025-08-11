@@ -1,0 +1,191 @@
+//+------------------------------------------------------------------+
+//| EURUSD_M1_10PercentAntiFake + MT2TradingLibrary (split logic)    |
+//+------------------------------------------------------------------+
+
+enum brokers {
+	All = 0,
+	IQOption = 1,
+	Binary = 2,
+	Spectre = 3,
+	Alpari = 4,
+	InstaBinary = 5,
+	OptionField = 6,
+	CLMForex = 7,
+	DukasCopy = 8,
+	GCOption = 9,
+	StrategyTester = 10,
+	CapitalCore = 11,
+	PocketOption = 12,
+	Bitness = 13
+};
+
+enum martingale {
+	NoMartingale = 0,
+	OnNextExpiry = 1,
+	OnNextSignal = 2,
+	Anti_OnNextExpiry = 3,
+	Anti_OnNextSignal = 4,
+	OnNextSignal_Global= 5,
+	Anti_OnNextSignal_Global = 6
+};
+	
+enum result {
+	TIE = 0,
+	WIN = 1,
+	LOSS = 2
+};
+
+#property copyright "ChatGPT"
+#property version   "3.4"
+#property strict
+#property indicator_chart_window
+#property indicator_buffers 0
+
+//----- Import MT2Trading library
+#import "mt2trading_library.ex5" 
+	bool mt2trading (string symbol, string direction, double amount, int expiryMinutes, martingale martingaleType, int martingaleSteps, double martingaleCoef, brokers myBroker, string signalName, string signalid);
+	int traderesult (string signalid);
+#import
+
+// INPUTS
+input int StartHour = 7;
+input int EndHour = 21;
+input int TimeZone = 7;
+input double TradeAmount = 1.0;
+input int ExpiryMinutes = 1;
+input string SignalName = "sLertumpai";
+input string SignalID = "sLertumpai";
+input bool EnableLog = false;
+
+double SignalBuffer[];
+
+input brokers Broker = All;
+input martingale MartingaleType = NoMartingale;    // Martingale
+input int MartingaleSteps = 2;                     // Martingale Steps
+input double MartingaleCoef = 2.0;                 // Martingale Coefficient
+
+datetime signalTime;
+string signalID;
+int LastSignalMinute = 0;
+string asset;
+
+input ENUM_TIMEFRAMES timeFrame = PERIOD_M1;
+
+//---- Inputs
+input double LotSize = 1.0;
+input int MagicNumber = 12345;
+
+//---- Helper functions to get features
+double CandleBody(int shift){ return iClose(_Symbol, PERIOD_M1, shift) - iOpen(_Symbol, PERIOD_M1, shift); }
+double CandleRange(int shift){ return iHigh(_Symbol, PERIOD_M1, shift) - iLow(_Symbol, PERIOD_M1, shift); }
+double UpperShadow(int shift){ return iHigh(_Symbol, PERIOD_M1, shift) - MathMax(iClose(_Symbol, PERIOD_M1, shift), iOpen(_Symbol, PERIOD_M1, shift)); }
+double LowerShadow(int shift){ return MathMin(iClose(_Symbol, PERIOD_M1, shift), iOpen(_Symbol, PERIOD_M1, shift)) - iLow(_Symbol, PERIOD_M1, shift); }
+
+//---- Predict using XGBoost rules
+int PredictSignal()
+{
+   double cb0 = CandleBody(0);
+   double cr0 = CandleRange(0);
+   double us0 = UpperShadow(0);
+   double ls0 = LowerShadow(0);
+   double oc_ratio = cb0 / (iOpen(_Symbol, PERIOD_M1, 0)+0.000001);
+   double hl_ratio = cr0 / (iLow(_Symbol, PERIOD_M1, 0)+0.000001);
+
+   double cb1 = CandleBody(1);
+   double cr1 = CandleRange(1);
+   double cb2 = CandleBody(2);
+   double cr2 = CandleRange(2);
+   double cb3 = CandleBody(3);
+   double cr3 = CandleRange(3);
+
+   double score = 0.0;
+
+   // ====== Example Tree Rules from XGBoost ======
+   // NOTE: #5I7- rule#45H6!2B!@% XGBoost
+   if(cb0 < 0.00005)
+   {
+      if(cb1 > 0) score += 0.12;
+      else score -= 0.08;
+   }
+   else
+   {
+      if(cr0 < 0.0003) score += 0.18;
+      else score -= 0.1;
+   }
+
+   if(oc_ratio > 0.0) score += 0.06;
+   else score -= 0.04;
+
+   if(cb2 > 0 && cb3 > 0) score += 0.09;
+   if(cb2 < 0 && cb3 < 0) score -= 0.09;
+   // ====== End of Rules ======
+
+   Print("Score: ", score);
+
+   if(score >= 0) return 1; // Call
+   else return -1;          // Put
+}
+
+
+int OnInit()
+{
+	//Initialize the time flag
+	signalTime = TimeCurrent();
+	if (StringLen(Symbol()) >= 6)
+		asset = StringSubstr(Symbol(),0,6);
+	else
+		asset = Symbol();
+   
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| OnCalculate                                                      |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+{
+
+    MqlDateTime t; TimeToStruct(TimeCurrent(), t);
+    int localHour = (t.hour + TimeZone) % 24;
+    if (localHour < StartHour || localHour >= EndHour) return rates_total;
+
+    int minuteNow = t.min;
+    if (minuteNow == LastSignalMinute) return 0; // D!H*H
+                                                         I3
+
+    int signal = PredictSignal();
+    SendMT2Signal(signal, "Direction");
+    LastSignalMinute = minuteNow;
+    
+    Print("==========");
+    return rates_total;
+}
+
+void SendMT2Signal(int direction, string sigName)
+{
+   string finalSigname = SignalName + "_" + sigName;
+   string dstr = (direction == 1) ? "CALL" : "PUT";
+   Print(dstr, " Signal at ", TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS));
+   mt2trading(asset, dstr, TradeAmount, ExpiryMinutes, MartingaleType, MartingaleSteps,
+			 MartingaleCoef, Broker, finalSigname, signalID);
+}
+
+void PrintLog(string msg) {
+   if (EnableLog) Print(msg);
+}
+
+string NowDateTime() {
+   datetime now = TimeCurrent();
+   now += TimeZone * 3600;
+   string timeStr = TimeToString(now, TIME_DATE | TIME_SECONDS);
+   return timeStr;
+}
