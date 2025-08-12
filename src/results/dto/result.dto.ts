@@ -55,8 +55,6 @@ export class UpsertResultDto {
 
 export class ResultResponseDto {
   @ApiProperty()
-  id!: string;
-  @ApiProperty()
   date!: string;
   @ApiProperty()
   account!: string;
@@ -74,6 +72,32 @@ export class ResultResponseDto {
   consecutiveWin!: number;
   @ApiProperty()
   consecutiveLoss!: number;
+}
+
+export class ResultGroupItemDto {
+  @ApiProperty({ example: '2025-08-12' })
+  date!: string;
+  @ApiProperty()
+  win!: number;
+  @ApiProperty()
+  loss!: number;
+  @ApiProperty()
+  tie!: number;
+  @ApiProperty()
+  maxConsecutiveWin!: number;
+  @ApiProperty()
+  maxConsecutiveLoss!: number;
+  @ApiProperty()
+  consecutiveWin!: number;
+  @ApiProperty()
+  consecutiveLoss!: number;
+}
+
+export class ResultGroupDto {
+  @ApiProperty({ example: 'demo-1220581411' })
+  account!: string;
+  @ApiProperty({ type: ResultGroupItemDto, isArray: true })
+  results!: ResultGroupItemDto[];
 }
 
 

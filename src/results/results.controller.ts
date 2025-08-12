@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ResultsService } from './results.service';
-import { UpsertResultDto } from './dto/result.dto';
+import { ResultGroupDto, UpsertResultDto } from './dto/result.dto';
 
 @ApiTags('results')
 @Controller('results')
@@ -18,6 +18,7 @@ export class ResultsController {
   @ApiOperation({ summary: 'List results' })
   @ApiQuery({ name: 'account', required: false })
   @ApiQuery({ name: 'date', required: false, description: 'YYYY-MM-DD' })
+  @ApiOperation({ summary: 'List results grouped by account and ordered by date desc' })
   list(@Query('account') account?: string, @Query('date') date?: string) {
     return this.resultsService.findAll(account, date);
   }

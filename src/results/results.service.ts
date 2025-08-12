@@ -14,34 +14,27 @@ export class ResultsService {
   }
 
   async findAll(account?: string, date?: string) {
-    const match: any = {};
-    if (account) match.account = account;
-    if (date) match.date = date;
-    return this.resultModel
-      .aggregate([
-        { $match: match },
-        { $sort: { account: 1, date: -1, createdAt: -1 } },
-        {
-          $group: {
-            _id: '$account',
-            results: {
-              $push: {
-                date: '$date',
-                win: '$win',
-                loss: '$loss',
-                tie: '$tie',
-                maxConsecutiveWin: '$maxConsecutiveWin',
-                maxConsecutiveLoss: '$maxConsecutiveLoss',
-                consecutiveWin: '$consecutiveWin',
-                consecutiveLoss: '$consecutiveLoss',
-              },
-            },
-          },
-        },
-        { $project: { _id: 0, account: '$_id', results: 1 } },
-        { $sort: { account: 1 } },
-      ])
-      .exec();
+    const filter: any = {};
+    if (account) filter.account = account;
+    if (date) filter.date = date;
+
+    const rows = await this.resultModel.find(filter).sort({ account: 1, date: -1, createdAt: -1 }).lean();
+    const grouped: Record<string, Array<{ date: string; win: number; loss: number; tie: number; maxConsecutiveWin: number; maxConsecutiveLoss: number; consecutiveWin: number; consecutiveLoss: number }>> = {};
+    for (const r of rows as any[]) {
+      const key = String(r.account);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({
+        date: String(r.date),
+        win: Number(r.win ?? 0),
+        loss: Number(r.loss ?? 0),
+        tie: Number(r.tie ?? 0),
+        maxConsecutiveWin: Number(r.maxConsecutiveWin ?? 0),
+        maxConsecutiveLoss: Number(r.maxConsecutiveLoss ?? 0),
+        consecutiveWin: Number(r.consecutiveWin ?? 0),
+        consecutiveLoss: Number(r.consecutiveLoss ?? 0),
+      });
+    }
+    return grouped;
   }
 }
 
