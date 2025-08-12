@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { BalanceModule } from './balance/balance.module';
 import { OrdersModule } from './orders/orders.module';
 import { InstrumentsModule } from './instruments/instruments.module';
+import { ResultsModule } from './results/results.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { InstrumentsModule } from './instruments/instruments.module';
     BalanceModule,
     OrdersModule,
     InstrumentsModule,
+    ResultsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
