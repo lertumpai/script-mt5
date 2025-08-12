@@ -11,27 +11,60 @@ export class OrdersService {
   constructor(@InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>) {}
 
   async place(dto: PlaceOrderDto): Promise<PlaceOrderResponseDto> {
-    // Ensure ws session
-    await IqOption.http.auth.session().catch(() => undefined);
+    // Ensure ws session and get profile for defaults
+    const session = await IqOption.http.auth.session().catch(() => ({ success: false } as any));
+    const profile = await IqOption.http.profile.get().catch(() => ({ success: false } as any));
 
     const side = dto.action === 'CALL' ? 'buy' : dto.action === 'PUT' ? 'sell' : dto.side;
     if (side !== 'buy' && side !== 'sell') {
       throw new BadRequestException('Provide either action=CALL|PUT or side=buy|sell');
     }
 
+    // Determine balance id: if invalid or equals user_id, fallback to current profile balance_id
+    const postedBalanceId = Number(dto.user_balance_id);
+    const userId = Number((profile as any)?.data?.user_id ?? 0);
+    const currentBalanceId = Number((profile as any)?.data?.balance_id ?? postedBalanceId);
+    const user_balance_id = postedBalanceId && postedBalanceId !== userId ? postedBalanceId : currentBalanceId;
+
+    // If instrument_id looks like a plain ticker (e.g., EURUSD), try to resolve for digital-option
+    let instrument_id = dto.instrument_id;
+    const looksLikeTicker = instrument_id && /^[A-Z]{6,}$/i.test(instrument_id) && !instrument_id.includes('-');
+    if (!instrument_id || looksLikeTicker) {
+      try {
+        const resolved = await new Promise<string | null>((resolve) => {
+          let done = false;
+          const handle = (json: unknown) => {
+            try {
+              const msg = (json as any)?.msg ?? (json as any)?.result ?? json;
+              const instruments = (msg as any)?.instruments as any[] | undefined;
+              if (Array.isArray(instruments)) {
+                const found = instruments.find((i) => String((i as any)?.ticker).toUpperCase() === (instrument_id || '').toUpperCase());
+                if (found?.id) {
+                  done = true;
+                  resolve(String(found.id));
+                }
+              }
+            } catch {}
+          };
+          IqOption.ws.onMessage = handle;
+          IqOption.ws.onOpen = () => {
+            IqOption.ws.auth.authenticate();
+            setTimeout(() => IqOption.ws.instrument.get({ type: 'digital-option' as any }), 50);
+          };
+          if (!IqOption.ws.isConnected) IqOption.ws.connect();
+          else IqOption.ws.instrument.get({ type: 'digital-option' as any });
+          setTimeout(() => !done && resolve(null), 2000);
+        });
+        if (resolved) instrument_id = resolved;
+      } catch {}
+    }
+
     const wsPlace = {
-      user_balance_id: dto.user_balance_id,
-      instrument_type: 'binary-option',
-      instrument_id: dto.instrument_id,
+      user_balance_id,
+      instrument_type: 'digital-option',
+      instrument_id,
       side,
       amount: dto.amount,
-      leverage: dto.leverage ?? 1,
-      limit_price: dto.limit_price ?? 0,
-      stop_price: dto.stop_price ?? 0,
-      stop_lose_value: dto.stop_lose_value ?? 0,
-      stop_lose_kind: dto.stop_lose_kind ?? 'percent',
-      take_profit_value: dto.take_profit_value ?? 0,
-      take_profit_kind: dto.take_profit_kind ?? 'percent',
     } as any;
 
     const rawMessages: string[] = [];
