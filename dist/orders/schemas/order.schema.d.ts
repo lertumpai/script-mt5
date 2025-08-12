@@ -3,7 +3,7 @@ export type OrderDocument = HydratedDocument<Order>;
 export declare class Order {
     userId: number;
     userBalanceId: number;
-    instrumentType: string;
+    instrumentType: 'digital-option';
     instrumentId: string;
     side: 'buy' | 'sell';
     amount: string;

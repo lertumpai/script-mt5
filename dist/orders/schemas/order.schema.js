@@ -39,7 +39,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Order.prototype, "userBalanceId", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)({ required: true, default: 'digital-option', enum: ['digital-option'] }),
     __metadata("design:type", String)
 ], Order.prototype, "instrumentType", void 0);
 __decorate([

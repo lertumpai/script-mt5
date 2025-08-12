@@ -10,7 +10,10 @@ import { OrdersModule } from './orders/orders.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRoot(process.env.MONGODB_URI ?? 'mongodb://localhost:27017/iqoption'),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI ??
+        'mongodb://lertumpai:Sorawit5171718@localhost:27017/binary-option?authSource=binary-option',
+    ),
     AuthModule,
     BalanceModule,
     OrdersModule,

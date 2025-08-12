@@ -1,6 +1,5 @@
 export declare class PlaceOrderDto {
     user_balance_id: number;
-    instrument_type: 'crypto' | 'forex' | 'cfd' | 'digital-option' | 'fx-option';
     instrument_id: string;
     side?: 'buy' | 'sell';
     action?: 'CALL' | 'PUT';

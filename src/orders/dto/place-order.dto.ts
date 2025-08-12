@@ -6,9 +6,7 @@ export class PlaceOrderDto {
   @IsNumber()
   user_balance_id!: number;
 
-  @ApiProperty({ enum: ['crypto', 'forex', 'cfd', 'digital-option', 'fx-option'] })
-  @IsString()
-  instrument_type!: 'crypto' | 'forex' | 'cfd' | 'digital-option' | 'fx-option';
+  // Binary option only; instrument type is fixed internally
 
   @ApiProperty({ example: 'EURUSD' })
   @IsString()

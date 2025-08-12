@@ -22,7 +22,8 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
-            mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI ?? 'mongodb://localhost:27017/iqoption'),
+            mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI ??
+                'mongodb://lertumpai:Sorawit5171718@localhost:27017/binary-option?authSource=binary-option'),
             auth_module_1.AuthModule,
             balance_module_1.BalanceModule,
             orders_module_1.OrdersModule,

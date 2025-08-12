@@ -11,8 +11,8 @@ export class Order {
   @Prop({ required: true })
   userBalanceId!: number;
 
-  @Prop({ required: true })
-  instrumentType!: string; // instrumentType
+  @Prop({ required: true, default: 'digital-option', enum: ['digital-option'] })
+  instrumentType!: 'digital-option';
 
   @Prop({ required: true })
   instrumentId!: string;

@@ -14,7 +14,6 @@ const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 class PlaceOrderDto {
     user_balance_id;
-    instrument_type;
     instrument_id;
     side;
     action;
@@ -33,11 +32,6 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], PlaceOrderDto.prototype, "user_balance_id", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ enum: ['crypto', 'forex', 'cfd', 'digital-option', 'fx-option'] }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], PlaceOrderDto.prototype, "instrument_type", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'EURUSD' }),
     (0, class_validator_1.IsString)(),
