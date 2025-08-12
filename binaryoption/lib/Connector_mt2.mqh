@@ -59,6 +59,7 @@ string asset;
 string prevSignalId = "";
 string curSignalId = "";
 
+bool IsResetResult = false;
 input int totalWin = 0;
 int win = 0;
 int loss = 0;
@@ -91,6 +92,7 @@ void ResetResult() {
    win = 0;
    loss = 0;
    tie = 0;
+   IsResetResult = true;
 }
 
 bool IsWin() {

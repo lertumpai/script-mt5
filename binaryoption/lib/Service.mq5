@@ -35,13 +35,22 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-    if (StopTrade || IsWin()) return 0;
-
-    CheckTradeResult();
-
+    if (StopTrade) return 0;
+    
     MqlDateTime t; TimeToStruct(TimeCurrent(), t);
     int localHour = (t.hour + TimeZone) % 24;
     if (localHour < StartHour || localHour >= EndHour) return rates_total;
+    
+    if (localHour == StartHour && !IsResetResult) {
+      ResetResult();
+    }
+    
+    if (IsWin()) {
+      IsResetResult = false;
+      return 0;
+    }
+    
+    CheckTradeResult();
     
     int secondNow = t.sec;
     if (secondNow < 1) return 0;
