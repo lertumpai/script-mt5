@@ -6,9 +6,6 @@ export type OrderDocument = HydratedDocument<Order>;
 @Schema({ timestamps: true })
 export class Order {
   @Prop({ required: true })
-  userId!: number;
-
-  @Prop({ required: true })
   userBalanceId!: number;
 
   @Prop({ required: true, default: 'digital-option', enum: ['digital-option'] })

@@ -11,7 +11,7 @@ export class OrdersService {
   constructor(@InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>) {}
 
   async place(dto: PlaceOrderDto): Promise<PlaceOrderResponseDto> {
-    // Ensure ws session and get profile for defaults
+    // Ensure session and profile
     const session = await IqOption.http.auth.session().catch(() => ({ success: false } as any));
     const profile = await IqOption.http.profile.get().catch(() => ({ success: false } as any));
 
@@ -20,49 +20,67 @@ export class OrdersService {
       throw new BadRequestException('Provide either action=CALL|PUT or side=buy|sell');
     }
 
-    // Determine balance id: if invalid or equals user_id, fallback to current profile balance_id
-    const postedBalanceId = Number(dto.user_balance_id);
-    const userId = Number((profile as any)?.data?.user_id ?? 0);
-    const currentBalanceId = Number((profile as any)?.data?.balance_id ?? postedBalanceId);
-    const user_balance_id = postedBalanceId && postedBalanceId !== userId ? postedBalanceId : currentBalanceId;
+    // Resolve digital-option instrument id by subscribing instruments with user group
+    let instrumentId: string | undefined = dto.instrument_id;
+    const providedLooksLikeTicker = instrumentId && /^[A-Za-z]{6,}$/i.test(instrumentId) && !instrumentId.includes('-');
+    const targetTicker = providedLooksLikeTicker ? instrumentId!.toUpperCase() : 'EURUSD';
 
-    // If instrument_id looks like a plain ticker (e.g., EURUSD), try to resolve for digital-option
-    let instrument_id = dto.instrument_id;
-    const looksLikeTicker = instrument_id && /^[A-Z]{6,}$/i.test(instrument_id) && !instrument_id.includes('-');
-    if (!instrument_id || looksLikeTicker) {
-      try {
-        const resolved = await new Promise<string | null>((resolve) => {
-          let done = false;
-          const handle = (json: unknown) => {
-            try {
-              const msg = (json as any)?.msg ?? (json as any)?.result ?? json;
-              const instruments = (msg as any)?.instruments as any[] | undefined;
-              if (Array.isArray(instruments)) {
-                const found = instruments.find((i) => String((i as any)?.ticker).toUpperCase() === (instrument_id || '').toUpperCase());
-                if (found?.id) {
-                  done = true;
-                  resolve(String(found.id));
-                }
+    if (!instrumentId || providedLooksLikeTicker) {
+      const user_group_id = Number((profile as any)?.data?.user_group_id ?? 0);
+      const is_regulated = Boolean((profile as any)?.data?.is_regulated ?? false);
+      instrumentId = await new Promise<string | undefined>((resolve) => {
+        let done = false;
+        const stopAt = Date.now() + 6000;
+        const handle = (json: unknown) => {
+          try {
+            const name = (json as any)?.name as string | undefined;
+            const msg = (json as any)?.msg ?? (json as any)?.result ?? json;
+            const instruments = (msg as any)?.instruments as any[] | undefined;
+            if (name?.toLowerCase().includes('instrument') && Array.isArray(instruments)) {
+              const found = instruments.find((i) => String((i as any)?.ticker ?? '').toUpperCase() === targetTicker);
+              if (found?.id) {
+                done = true;
+                resolve(String(found.id));
               }
-            } catch {}
-          };
-          IqOption.ws.onMessage = handle;
-          IqOption.ws.onOpen = () => {
-            IqOption.ws.auth.authenticate();
-            setTimeout(() => IqOption.ws.instrument.get({ type: 'digital-option' as any }), 50);
-          };
-          if (!IqOption.ws.isConnected) IqOption.ws.connect();
-          else IqOption.ws.instrument.get({ type: 'digital-option' as any });
-          setTimeout(() => !done && resolve(null), 2000);
-        });
-        if (resolved) instrument_id = resolved;
-      } catch {}
+            }
+          } catch {}
+          if (!done && Date.now() > stopAt) resolve(undefined);
+        };
+        IqOption.ws.onMessage = handle;
+        IqOption.ws.onOpen = () => {
+          IqOption.ws.auth.authenticate();
+          setTimeout(
+            () =>
+              IqOption.ws.instrument.subscribe({
+                type: 'digital-option' as any,
+                ...(user_group_id ? { user_group_id } : {}),
+                ...(is_regulated ? { is_regulated: true as any } : {}),
+              }),
+            50,
+          );
+        };
+        if (!IqOption.ws.isConnected) IqOption.ws.connect();
+        else
+          IqOption.ws.instrument.subscribe({
+            type: 'digital-option' as any,
+            ...(user_group_id ? { user_group_id } : {}),
+            ...(is_regulated ? { is_regulated: true as any } : {}),
+          });
+      });
     }
 
+    if (!instrumentId) {
+      throw new BadRequestException('Unable to resolve instrument_id for EURUSD under digital-option. Provide instrument_id explicitly.');
+    }
+
+    // Normalize balance id using profile if needed
+    const balanceId = Number(dto.user_balance_id) || Number((profile as any)?.data?.balance_id);
+
+    // Build and send order (digital-option)
     const wsPlace = {
-      user_balance_id,
+      user_balance_id: balanceId,
       instrument_type: 'digital-option',
-      instrument_id,
+      instrument_id: instrumentId,
       side,
       amount: dto.amount,
     } as any;
@@ -72,19 +90,17 @@ export class OrdersService {
       IqOption.ws.onMessage = (json) => {
         const s = JSON.stringify(json);
         rawMessages.push(s);
-        // Detect order placement response: look for message name containing 'order' and id
         const name = (json as any)?.name as string | undefined;
         const msg = (json as any)?.msg ?? (json as any)?.result ?? (json as any)?.message ?? json;
         const id = Number((msg as any)?.id ?? (msg as any)?.order_id ?? 0);
         if ((name?.toLowerCase().includes('order') || id) && id) {
-          // Save order to DB
+          // Save order
           this.orderModel
             .create({
-              userId: Number((msg as any)?.user_id ?? 0),
-              userBalanceId: dto.user_balance_id,
-              instrumentType: 'binary-option',
-              instrumentId: dto.instrument_id,
-              side: (wsPlace as any).side,
+              userBalanceId: balanceId,
+              instrumentType: 'digital-option',
+              instrumentId: instrumentId,
+              side: wsPlace.side,
               amount: dto.amount,
               leverage: dto.leverage ?? 1,
               limitPrice: dto.limit_price ?? 0,
@@ -101,20 +117,20 @@ export class OrdersService {
 
           resolve({ success: true, orderId: id, raw: json });
         }
+        // capture explicit error for debugging
+        if (name === 'order-placed-temp' && (json as any)?.status && (json as any)?.status !== 200) {
+          resolve({ success: false, raw: rawMessages });
+        }
       };
 
       IqOption.ws.onOpen = () => {
         IqOption.ws.auth.authenticate();
-        setTimeout(() => IqOption.ws.order.place(wsPlace), 50);
+        setTimeout(() => IqOption.ws.order.place(wsPlace), 150);
       };
+      if (!IqOption.ws.isConnected) IqOption.ws.connect();
+      else IqOption.ws.order.place(wsPlace);
 
-      if (!IqOption.ws.isConnected) {
-        IqOption.ws.connect();
-      } else {
-        IqOption.ws.order.place(wsPlace);
-      }
-
-      setTimeout(() => resolve({ success: false, raw: rawMessages }), 4000);
+      setTimeout(() => resolve({ success: false, raw: rawMessages }), 5000);
     });
   }
 
