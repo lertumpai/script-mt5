@@ -1,7 +1,7 @@
 REMOTE_USER ?= lertumpai
 REMOTE_HOST ?= 192.168.1.99
 REMOTE_DIR  ?= /home/$(REMOTE_USER)/applications
-REMOTE_PASSWORD ?=
+REMOTE_PASSWORD ?= S@rawit5171718
 
 DOCKER_COMPOSE_FILE ?= api.docker-compose.yml
 DOCKER_COMPOSE_TEMPLATE ?= template.docker-compose.yml
@@ -13,7 +13,7 @@ VERSION := $(shell node -p "require('./package.json').version" 2>/dev/null || ec
 .PHONY: deploy-mql5
 
 # Source file to deploy (override with `make deploy-mql5 MQL_FILE=path/to/file`)
-MQL_FILE ?= binaryoption/lib/candle/v1.mqh
+MQL_FILE ?= binaryoption/lib/date.mqh
 
 deploy-mql5:
 	@if [ ! -f "$(MQL_FILE)" ]; then \
