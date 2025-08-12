@@ -21,7 +21,7 @@ export class OrdersService {
 
     const wsPlace = {
       user_balance_id: dto.user_balance_id,
-      instrument_type: 'digital-option',
+      instrument_type: 'binary-option',
       instrument_id: dto.instrument_id,
       side,
       amount: dto.amount,
@@ -49,7 +49,7 @@ export class OrdersService {
             .create({
               userId: Number((msg as any)?.user_id ?? 0),
               userBalanceId: dto.user_balance_id,
-              instrumentType: 'digital-option',
+              instrumentType: 'binary-option',
               instrumentId: dto.instrument_id,
               side: (wsPlace as any).side,
               amount: dto.amount,
