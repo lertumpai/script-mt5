@@ -13,7 +13,7 @@ VERSION := $(shell node -p "require('./package.json').version" 2>/dev/null || ec
 .PHONY: deploy-mql5
 
 # Source file to deploy (override with `make deploy-mql5 MQL_FILE=path/to/file`)
-MQL_FILE ?= binaryoption/lib/Service_v2.mq5
+MQL_FILE ?= binaryoption/lib/candle/v3.mqh
 
 deploy-mql5:
 	@if [ ! -f "$(MQL_FILE)" ]; then \
