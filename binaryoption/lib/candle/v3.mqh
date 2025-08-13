@@ -4,15 +4,6 @@ double CandleRange(int shift){ return iHigh(_Symbol, PERIOD_M1, shift) - iLow(_S
 double UpperShadow(int shift){ return iHigh(_Symbol, PERIOD_M1, shift) - MathMax(iClose(_Symbol, PERIOD_M1, shift), iOpen(_Symbol, PERIOD_M1, shift)); }
 double LowerShadow(int shift){ return MathMin(iClose(_Symbol, PERIOD_M1, shift), iOpen(_Symbol, PERIOD_M1, shift)) - iLow(_Symbol, PERIOD_M1, shift); }
 
-void PrintPrice(int shift)
-{
-   Print("Time[", TimeToString(iTime(_Symbol, PERIOD_M1, shift), TIME_DATE|TIME_MINUTES), "]",
-         " O=",DoubleToString(iOpen(_Symbol,PERIOD_M1,shift),Digits()),
-         " H=",DoubleToString(iHigh(_Symbol,PERIOD_M1,shift),Digits()),
-         " L=",DoubleToString(iLow(_Symbol,PERIOD_M1,shift),Digits()),
-         " C=",DoubleToString(iClose(_Symbol,PERIOD_M1,shift),Digits()));
-}
-
 // ---------- Balanced logistic model (trained from your CSV) ----------
 namespace BalancedModel
 {

@@ -42,7 +42,7 @@ int OnCalculate(const int rates_total,
     if (localHour < StartHour || localHour >= EndHour) return rates_total;
     
     int secondNow = t.sec;
-    if (secondNow < 2) return 0;
+    if (secondNow < 1) return 0;
     
     CalTradeResult();
 
@@ -52,7 +52,7 @@ int OnCalculate(const int rates_total,
     double score = PredictSignal();
     Print("score: ", score);
     
-    if (score == 0) {
+    if (score == 0 || score == 0.0) {
        Print("==========");
        return rates_total;
     }
