@@ -1,0 +1,177 @@
+result = L
+lossTo10 = 1
+accumulateLoss 1.25
+nextAmount 1.25
+nextProfit 1.09
+nextProfit x 2 2.17
+if win 0.92
+================================================
+result = L
+lossTo10 = 2
+accumulateLoss 2.5
+nextAmount 1.69
+nextProfit 1.47
+nextProfit x 2 2.94
+if win 0.44
+================================================
+result = L
+lossTo10 = 3
+accumulateLoss 4.19
+nextAmount 2.76
+nextProfit 2.4
+nextProfit x 2 4.8
+if win 0.61
+================================================
+result = W
+lossTo10 = 3
+accumulateLoss 1.79
+nextAmount 2.76
+nextProfit 2.4
+nextProfit x 2 4.8
+if win 3.01
+================================================
+result = L
+lossTo10 = 4
+accumulateLoss 4.55
+nextAmount 3.16
+nextProfit 2.75
+nextProfit x 2 5.5
+if win 0.95
+================================================
+result = L
+lossTo10 = 5
+accumulateLoss 7.71
+nextAmount 5.09
+nextProfit 4.43
+nextProfit x 2 8.86
+if win 1.15
+================================================
+result = L
+lossTo10 = 6
+accumulateLoss 12.8
+nextAmount 8.43
+nextProfit 7.33
+nextProfit x 2 14.67
+if win 1.87
+================================================
+result = L
+lossTo10 = 7
+accumulateLoss 21.23
+nextAmount 13.98
+nextProfit 12.16
+nextProfit x 2 24.33
+if win 3.1
+================================================
+result = L
+lossTo10 = 8
+accumulateLoss 35.21
+nextAmount 23.18
+nextProfit 20.17
+nextProfit x 2 40.33
+if win 5.12
+================================================
+result = L
+lossTo10 = 9
+accumulateLoss 58.39
+nextAmount 38.44
+nextProfit 33.44
+nextProfit x 2 66.89
+if win 8.5
+================================================
+result = W
+lossTo10 = 9
+accumulateLoss 24.95
+nextAmount 38.44
+nextProfit 33.44
+nextProfit x 2 66.89
+if win 41.94
+================================================
+result = L
+lossTo10 = 10
+accumulateLoss 63.39
+nextAmount 44.07
+nextProfit 38.34
+nextProfit x 2 76.68
+if win 13.29
+================================================
+result = W
+lossTo10 = 0
+accumulateLoss 25.05
+nextAmount 22.51
+nextProfit 19.58
+nextProfit x 2 39.17
+if win 14.12
+================================================
+result = L
+lossTo10 = 1
+accumulateLoss 47.56
+nextAmount 31.95
+nextProfit 27.8
+nextProfit x 2 55.59
+if win 8.03
+================================================
+result = L
+lossTo10 = 2
+accumulateLoss 79.51
+nextAmount 52.41
+nextProfit 45.6
+nextProfit x 2 91.19
+if win 11.68
+================================================
+result = L
+lossTo10 = 3
+accumulateLoss 131.92
+nextAmount 86.85
+nextProfit 75.56
+nextProfit x 2 151.12
+if win 19.2
+================================================
+result = L
+lossTo10 = 4
+accumulateLoss 218.77
+nextAmount 144.01
+nextProfit 125.29
+nextProfit x 2 250.58
+if win 31.81
+================================================
+result = L
+lossTo10 = 5
+accumulateLoss 362.78
+nextAmount 238.81
+nextProfit 207.76
+nextProfit x 2 415.53
+if win 52.75
+================================================
+result = L
+lossTo10 = 6
+accumulateLoss 601.59
+nextAmount 396.02
+nextProfit 344.54
+nextProfit x 2 689.07
+if win 87.48
+================================================
+result = L
+lossTo10 = 7
+accumulateLoss 997.61
+nextAmount 656.72
+nextProfit 571.35
+nextProfit x 2 1142.69
+if win 145.08
+================================================
+result = L
+lossTo10 = 8
+accumulateLoss 1654.33
+nextAmount 1089.03
+nextProfit 947.46
+nextProfit x 2 1894.91
+if win 240.58
+================================================
+result = W
+lossTo10 = 8
+accumulateLoss 706.87
+nextAmount 1089.03
+nextProfit 947.46
+nextProfit x 2 1894.91
+if win 1188.04
+================================================
+22

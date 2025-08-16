@@ -8,6 +8,7 @@ const LOSS = 'L';
 const payout = 0.85; // Assuming 80% payout
 const actualPayout = 0.87;
 let consecutiveWin = 0; // This would be tracked elsewhere
+let lossTo10 = 0;
 
 function fix2Number(num) {
     return Number(Number(num).toFixed(2));
@@ -21,7 +22,7 @@ function calculateAmountMartingaleDivided2() {
 }
 
 const results = [
-    LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, WIN, LOSS, LOSS
+    LOSS, LOSS, LOSS, WIN, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, WIN, LOSS, WIN, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, LOSS, WIN
 ]
 
 function martingaleDivided2() {
@@ -30,6 +31,11 @@ function martingaleDivided2() {
             consecutiveWin++;
             if (consecutiveWin <= 1) {
                 accumulateLoss = fix2Number(accumulateLoss - currentAmount * actualPayout);
+
+                if (lossTo10 >= 10) {
+                    lossTo10 = 0;
+                    currentAmount = calculateAmountMartingaleDivided2();
+                }
             }
             else {
                 accumulateLoss = 0;
@@ -37,12 +43,14 @@ function martingaleDivided2() {
             }
         }
         else if (result === LOSS) {
+            lossTo10++;
             consecutiveWin = 0;
             accumulateLoss = fix2Number(accumulateLoss + currentAmount);
             currentAmount = calculateAmountMartingaleDivided2();
         }
 
-        console.log("result ->", result)
+        console.log("result =", result)
+        console.log("lossTo10 =", lossTo10)
         console.log("accumulateLoss", accumulateLoss)
         console.log("nextAmount", currentAmount)
         console.log("nextProfit", fix2Number(currentAmount * actualPayout))
