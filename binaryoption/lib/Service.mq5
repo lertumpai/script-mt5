@@ -4,7 +4,7 @@
 #property indicator_chart_window
 #property indicator_buffers 0
 
-#include "../Include/Lertumpai/candle_v2.mqh"
+#include "../Include/Lertumpai/signal/main.mqh"
 #include "../Include/Lertumpai/connector_mt2.mqh"
 
 // INPUTS
@@ -41,28 +41,18 @@ int OnCalculate(const int rates_total,
     int localHour = (t.hour + TimeZone) % 24;
     if (localHour < StartHour || localHour >= EndHour) return rates_total;
     
-    if (localHour == StartHour && !IsResetResult) {
-      ResetResult();
-    }
-    
-    if (IsWin()) {
-      IsResetResult = false;
-      return 0;
-    }
-    
-    CheckTradeResult();
-    
     int secondNow = t.sec;
     if (secondNow < 1) return 0;
+    
+    CheckPreviousTradeResult();
 
     int minuteNow = t.min;
-    if (minuteNow == LastSignalMinute) return 0; 
+    if (minuteNow == LastSignalMinute) return 0;
 
     double score = PredictSignal();
-    Print("score: ", score);
     
-    if (score == 0) {
-       Print("==========");
+    if (score == 0 || score == 0.0) {
+       Print("=====SKIP=====");
        return rates_total;
     }
     
