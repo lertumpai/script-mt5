@@ -8,8 +8,8 @@
 #include "../Include/Lertumpai/connector_mt2.mqh"
 
 // INPUTS
-input int StartHour = 7;
-input int EndHour = 21;
+input int StartHour = 8;
+input int EndHour = 24;
 input int TimeZone = 7;
 input bool StopTrade = false;
 
