@@ -34,6 +34,7 @@ deploy-lib:
 	sshpass -p "$(REMOTE_PASSWORD)" scp -o StrictHostKeyChecking=no binaryoption/lib/api.mqh "$(REMOTE_USER)@$(REMOTE_HOST):/home/$(REMOTE_USER)/.wine/drive_c/Program Files/MetaTrader 5 EXNESS/MQL5/Include/Lertumpai/";
 	sshpass -p "$(REMOTE_PASSWORD)" scp -o StrictHostKeyChecking=no binaryoption/lib/date.mqh "$(REMOTE_USER)@$(REMOTE_HOST):/home/$(REMOTE_USER)/.wine/drive_c/Program Files/MetaTrader 5 EXNESS/MQL5/Include/Lertumpai/";
 	sshpass -p "$(REMOTE_PASSWORD)" scp -o StrictHostKeyChecking=no binaryoption/lib/price.mqh "$(REMOTE_USER)@$(REMOTE_HOST):/home/$(REMOTE_USER)/.wine/drive_c/Program Files/MetaTrader 5 EXNESS/MQL5/Include/Lertumpai/";
+	sshpass -p "$(REMOTE_PASSWORD)" scp -o StrictHostKeyChecking=no binaryoption/lib/connector_mt2.mqh "$(REMOTE_USER)@$(REMOTE_HOST):/home/$(REMOTE_USER)/.wine/drive_c/Program Files/MetaTrader 5 EXNESS/MQL5/Include/Lertumpai/";
 	@echo "[DONE] All lib files deployed to MetaTrader 5 Include directory."
 
 deploy-service:
