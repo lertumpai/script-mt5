@@ -5,6 +5,7 @@ input string api_key = "S@rawit5171718";
 input string base_url = "http://192.168.1.35:5000";
 input string bulk_update_price_path = "/prices/bulk-update";
 input string update_price_path = "/prices/update";
+input string iq_monitor_upsert_path = "/iq-monitor/upsert";
 
 int timeout = 10000;
 
@@ -158,3 +159,115 @@ void CallPriceUpdateAPI(string symbol, double open, double high, double low, dou
       }
    }
 }
+
+// Function to upsert IQ monitor data
+void UpsertIqMonitor(string monitor_name, double amount, double score, double confidence, int consecutive_loss, string direction = "NONE")
+  {
+   // Validate input parameters
+   if(StringLen(monitor_name) == 0)
+     {
+      Print("ERROR: Monitor name cannot be empty");
+      return;
+     }
+   
+   if(amount <= 0)
+     {
+      Print("ERROR: Amount must be greater than 0");
+      return;
+     }
+   
+   if(score < 0 || score > 1)
+     {
+      Print("ERROR: Score must be between 0 and 1");
+      return;
+     }
+   
+   if(confidence < 0 || confidence > 1)
+     {
+      Print("ERROR: Confidence must be between 0 and 1");
+      return;
+     }
+   
+   if(consecutive_loss < 0)
+     {
+      Print("ERROR: Consecutive loss cannot be negative");
+      return;
+     }
+   
+   // Validate direction
+   if(direction != "PUT" && direction != "CALL" && direction != "NONE")
+     {
+      Print("ERROR: Direction must be PUT, CALL, or NONE. Using NONE as default.");
+      direction = "NONE";
+     }
+   
+   // Build JSON payload for IQ monitor upsert
+   string monitor_json = StringFormat(
+      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.2f,\"consecutiveLoss\":%d,\"direction\":\"%s\"}",
+      monitor_name, amount, score, confidence, consecutive_loss, direction
+   );
+   
+   Print("Upserting IQ Monitor: ", monitor_name);
+   Print("Payload: ", monitor_json);
+   
+   // Call IQ monitor upsert API
+   CallIqMonitorUpsertApi(monitor_json);
+  }
+
+// Function to call IQ monitor upsert API
+void CallIqMonitorUpsertApi(string json_body)
+  {
+   string api = base_url + iq_monitor_upsert_path;
+   
+   uchar post[];
+   
+   Print("IQ Monitor POST Body: ", json_body);
+   
+   int body_length = StringToCharArray(json_body, post);
+   ArrayResize(post, body_length - 1); // Remove trailing null char
+   
+   uchar result[];
+   string result_headers = "";
+   int monitor_timeout = 5000; // Timeout for IQ monitor operations
+   
+   int res = WebRequest(
+                        "POST",
+                        api,
+                        headers,
+                        monitor_timeout,
+                        post,
+                        result,
+                        result_headers
+   );
+   
+   if(res == -1)
+     {
+      int error_code = GetLastError();
+      Print("WebRequest error: ", error_code);
+      
+      if(error_code == 4060)
+        {
+         Print("URL not allowed. Add ", api, " to Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL");
+        }
+      else
+        {
+         Print("Other WebRequest error. Check network connection and API server status.");
+        }
+     }
+   else
+     {
+      string response = CharArrayToString(result);
+      
+      // Handle different response codes
+      if(res != 200 && res != 201)
+        {
+         Print("IQ Monitor API Error - Response Code: ", res);
+         Print("API Error Response: ", response);
+        }
+      else
+        {
+         Print("IQ Monitor upsert successful - Response Code: ", res);
+         Print("API Response: ", response);
+        }
+     }
+  }
