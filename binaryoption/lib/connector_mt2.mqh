@@ -1,4 +1,5 @@
 #include "./date.mqh"
+#include "./api.mqh"
 
 enum brokers {
 	All = 0,
@@ -47,7 +48,6 @@ enum Result {
 int ExpiryMinutes = 1;
 input string SignalName = "sLertumpai";
 input string SignalID = "sLertumpai";
-input bool EnableLog = false;
 
 input Account IqOptionAccount = NewSorawit;
 
@@ -78,13 +78,13 @@ void InitConnectorToMT2() {
 		asset = Symbol();
 }
 
-void SendMT2Signal(double score, string systemTradeName)
+void SendMT2Signal(string systemTradeName, string direction)
 {
-   string dstr = (score >= 0) ? "CALL" : "PUT";
-   string finalSigname = "System[" + systemTradeName + "]" + "_" + dstr;
+   string finalSigname = "System[" + systemTradeName + "]" + "_" + direction;
    string dateTime = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-   Print(dstr, " Signal at ", dateTime);
-   mt2trading(asset, dstr, CalculateAmount(), ExpiryMinutes, 0, 0,
+   Print("finalSigname=", finalSigname);
+   Print("asset=", asset, ", direction=", direction, ", Signal at ", dateTime);
+   mt2trading(asset, direction, CalculateAmount(), ExpiryMinutes, 0, 0,
 			 0, IQOption, finalSigname, curSignalId);
 }
 
@@ -156,10 +156,6 @@ void CheckPreviousTradeResult() {
    
    if (prevSignalId != "") {
       int result = traderesult(prevSignalId);
-      while (result < 0) {
-         Sleep(200);
-         result = traderesult(prevSignalId);         
-      }
       
       if (result == 0) {
          Tie();

@@ -39,14 +39,14 @@ void OnTick()
     if (minuteNow == LastSignalMinute) return ;
    
     CheckPreviousTradeResult();
-    double score = PredictSignal();
+    PredictSignal();
     
-    if (score == 0 || score == 0.0) {
+    if (predicted_score == 0 || predicted_score == 0.0) {
        Print("=====SKIP=====");
        return ;
     }
     
-    SendMT2Signal(score, GetSystemName());
+    SendMT2Signal(GetSystemName(), predicted_direction);
     LastSignalMinute = minuteNow;
     
     Print("==========");
