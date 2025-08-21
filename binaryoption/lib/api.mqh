@@ -112,7 +112,6 @@ void CallPriceUpdateAPI(string symbol, double open, double high, double low, dou
    }
 
    string response = CharArrayToString(result, 0, -1, CP_UTF8);
-   PrintFormat("Single ResponseCode=%d, RespHeaders=%s", res, result_headers);
 
    if(res == 200 || res == 201)
    {
@@ -171,7 +170,6 @@ void CallIqMonitorUpsertApi(string json_body)
    }
 
    string response = CharArrayToString(result, 0, -1, CP_UTF8);
-   PrintFormat("Monitor ResponseCode=%d, RespHeaders=%s", res, result_headers);
 
    if(res != 200 && res != 201)
    {
