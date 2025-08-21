@@ -81,7 +81,7 @@ void InitConnectorToMT2() {
 void SendMT2Signal(string signalName, string direction)
 {
    string dateTime = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-   Print("finalSigname=", signalName);
+   Print("finalSigname=", signalName, ", curSignalId=", curSignalId);
    Print("asset=", asset, ", direction=", direction, ", Signal at ", dateTime);
    mt2trading(asset, direction, CalculateAmount(), ExpiryMinutes, 0, 0,
 			 0, IQOption, signalName, curSignalId);
