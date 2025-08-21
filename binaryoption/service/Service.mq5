@@ -46,8 +46,12 @@ void OnTick()
        return ;
     }
     
-    SendMT2Signal(GetSystemName(), predicted_direction);
+    SendMT2Signal(signalName(), predicted_direction);
     LastSignalMinute = minuteNow;
     
     Print("==========");
+}
+
+string signalName() {
+   return "System["+ GetSystemName() + "]" + "_" + "AmountType["+ GetAmountType() + "]";
 }

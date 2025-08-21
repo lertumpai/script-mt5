@@ -78,14 +78,13 @@ void InitConnectorToMT2() {
 		asset = Symbol();
 }
 
-void SendMT2Signal(string systemTradeName, string direction)
+void SendMT2Signal(string signalName, string direction)
 {
-   string finalSigname = "System[" + systemTradeName + "]" + "_" + direction;
    string dateTime = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-   Print("finalSigname=", finalSigname);
+   Print("finalSigname=", signalName);
    Print("asset=", asset, ", direction=", direction, ", Signal at ", dateTime);
    mt2trading(asset, direction, CalculateAmount(), ExpiryMinutes, 0, 0,
-			 0, IQOption, finalSigname, curSignalId);
+			 0, IQOption, signalName, curSignalId);
 }
 
 
@@ -177,6 +176,14 @@ enum AmountType {
    Martingale = 0,
    MartingaleDivided2 = 1
 };
+
+string GetAmountType () {
+   switch (amountType) {
+      case Martingale: return "Martingale";
+      case MartingaleDivided2: return "MartingaleDivided2";
+      default: return "Martingale";
+   }
+}
 
 input double Payout = 0.8;
 input double DefaultAmount = 1.25;
