@@ -14,9 +14,6 @@ string CommonHeaders()
 {
    string h = 
       "Content-Type: application/json\r\n"
-      "Accept: application/json\r\n"
-      "User-Agent: MetaTrader5/5.x\r\n"
-      "Connection: close\r\n"
       "Cookie: api_key=" + api_key + "\r\n";
    return h;
 }
@@ -153,15 +150,16 @@ void CallIqMonitorUpsertApi(string json_body)
 {
    string api = base_url + iq_monitor_upsert_path;
 
+   Print("Calling IQ Monitor API: ", api);
+
    char post[];
    JsonToBytes(json_body, post);
 
    char result[];
    string result_headers = "";
-   int monitor_timeout = 5000;
 
    ResetLastError();
-   int res = WebRequest("POST", api, CommonHeaders(), monitor_timeout, post, result, result_headers);
+   int res = WebRequest("POST", api, CommonHeaders(), timeout, post, result, result_headers);
 
    if(res == -1)
    {
@@ -177,6 +175,7 @@ void CallIqMonitorUpsertApi(string json_body)
 
    if(res != 200 && res != 201)
    {
+   
       Print("IQ Monitor API Error - Response Code: ", res);
       Print("API Error Response: ", response);
    }

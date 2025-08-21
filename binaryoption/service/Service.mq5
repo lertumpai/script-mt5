@@ -1,15 +1,12 @@
 #property copyright "ChatGPT"
 #property version   "3.4"
 #property strict
-#property indicator_chart_window
-#property indicator_buffers 0
 
-#include "../Include/Lertumpai/signal/main.mqh"
 #include "../Include/Lertumpai/connector_mt2.mqh"
+#include "../Include/Lertumpai/signal/main.mqh"
 
-// INPUTS
-input int StartHour = 8;
-input int EndHour = 24;
+input int StartHour = 7;
+input int EndHour = 21;
 input int TimeZone = 7;
 input bool StopTrade = false;
 
@@ -18,51 +15,39 @@ input ENUM_TIMEFRAMES timeFrame = PERIOD_M1;
 int OnInit()
 {
 	InitConnectorToMT2();
+	
+	Print("System trade = ", GetSystemName());
+	
    return(INIT_SUCCEEDED);
 }
 
 //+------------------------------------------------------------------+
-//| OnCalculate                                                      |
+//| OnTick                                                      |
 //+------------------------------------------------------------------+
-int OnCalculate(const int rates_total,
-                const int prev_calculated,
-                const datetime &time[],
-                const double &open[],
-                const double &high[],
-                const double &low[],
-                const double &close[],
-                const long &tick_volume[],
-                const long &volume[],
-                const int &spread[])
+void OnTick()
 {
-    if (StopTrade) return 0;
+    if (StopTrade) return ;
     
     MqlDateTime t; TimeToStruct(TimeCurrent(), t);
     int localHour = (t.hour + TimeZone) % 24;
-    if (localHour < StartHour || localHour >= EndHour) return rates_total;
+    if (localHour < StartHour || localHour >= EndHour) return ;
     
     int secondNow = t.sec;
-    if (secondNow < 1) return 0;
-    
-    CheckPreviousTradeResult();
+    if (secondNow < 1) return ;
 
     int minuteNow = t.min;
-    if (minuteNow == LastSignalMinute) return 0;
-
+    if (minuteNow == LastSignalMinute) return ;
+   
+    CheckPreviousTradeResult();
     double score = PredictSignal();
     
     if (score == 0 || score == 0.0) {
        Print("=====SKIP=====");
-       return rates_total;
+       return ;
     }
     
     SendMT2Signal(score, GetSystemName());
     LastSignalMinute = minuteNow;
     
     Print("==========");
-    return rates_total;
-}
-
-void PrintLog(string msg) {
-   if (EnableLog) Print(msg);
 }
