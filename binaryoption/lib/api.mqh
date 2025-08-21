@@ -126,7 +126,7 @@ void CallPriceUpdateAPI(string symbol, double open, double high, double low, dou
 }
 
 // -------- IQ MONITOR UPSERT --------
-void UpsertIqMonitor(string monitor_name, double amount, double score, double confidence, int consecutive_loss, string direction = "NONE")
+void UpsertIqMonitor(string monitor_name, double amount, double score, double confidence, int consecutive_loss, string direction = "NONE", string currentSignalId = "")
 {
    if(StringLen(monitor_name) == 0){ Print("ERROR: Monitor name cannot be empty"); return; }
    if(amount <= 0){ Print("ERROR: Amount must be greater than 0"); return; }
@@ -135,8 +135,8 @@ void UpsertIqMonitor(string monitor_name, double amount, double score, double co
    if(direction != "PUT" && direction != "CALL" && direction != "NONE"){ Print("ERROR: Direction must be PUT, CALL, or NONE. Using NONE as default."); direction = "NONE"; }
 
    string monitor_json = StringFormat(
-      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.2f,\"consecutiveLoss\":%d,\"direction\":\"%s\"}",
-      monitor_name, amount, score, confidence, consecutive_loss, direction
+      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.2f,\"consecutiveLoss\":%d,\"direction\":\"%s\",\"currentSignalId\":\"%s\"}",
+      monitor_name, amount, score, confidence, consecutive_loss, direction, currentSignalId
    );
 
    Print("Upserting IQ Monitor: ", monitor_name);
