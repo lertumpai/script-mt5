@@ -6,6 +6,7 @@ input string base_url = "http://192.168.1.35:5000";
 input string bulk_update_price_path = "/prices/bulk-update";
 input string update_price_path      = "/prices/update";
 input string iq_monitor_upsert_path = "/iq-monitor/upsert";
+input string iq_monitor_update_result_path = "/iq-monitor/update-result";
 
 int timeout = 10000;
 
@@ -135,7 +136,7 @@ void UpsertIqMonitor(string monitor_name, double amount, double score, double co
    if(direction != "PUT" && direction != "CALL" && direction != "NONE"){ Print("ERROR: Direction must be PUT, CALL, or NONE. Using NONE as default."); direction = "NONE"; }
 
    string monitor_json = StringFormat(
-      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.2f,\"consecutiveLoss\":%d,\"direction\":\"%s\",\"currentSignalId\":\"%s\"}",
+      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.5f,\"consecutiveLoss\":%d,\"direction\":\"%s\",\"currentSignalId\":\"%s\"}",
       monitor_name, amount, score, confidence, consecutive_loss, direction, currentSignalId
    );
 
@@ -180,6 +181,78 @@ void CallIqMonitorUpsertApi(string json_body)
    else
    {
       Print("IQ Monitor upsert successful - Response Code: ", res);
+      Print("API Response: ", response);
+   }
+}
+
+// -------- IQ MONITOR UPDATE RESULT --------
+void UpdateIqMonitorResult(string monitor_name, string current_signal_id, string result)
+{
+   if(StringLen(monitor_name) == 0){ Print("ERROR: Monitor name cannot be empty"); return; }
+   if(StringLen(current_signal_id) == 0){ Print("ERROR: Current signal ID cannot be empty"); return; }
+   if(StringLen(result) == 0){ Print("ERROR: Result cannot be empty"); return; }
+   
+   if(result != "WIN" && result != "LOSS" && result != "TIE"){ 
+      Print("ERROR: Result must be WIN, LOSS, or TIE. Got: ", result); 
+      return; 
+   }
+
+   string result_json = StringFormat(
+      "{\"name\":\"%s\",\"currentSignalId\":\"%s\",\"result\":\"%s\"}",
+      monitor_name, current_signal_id, result
+   );
+
+   Print("Updating IQ Monitor Result: ", monitor_name, " (Signal: ", current_signal_id, ") -> ", result);
+   Print("Payload: ", result_json);
+
+   CallIqMonitorUpdateResultApi(result_json);
+}
+
+void CallIqMonitorUpdateResultApi(string json_body)
+{
+   string api = base_url + iq_monitor_update_result_path;
+
+   Print("Calling IQ Monitor Update Result API: ", api);
+   Print("Request Body: ", json_body);
+
+   char post[];
+   JsonToBytes(json_body, post);
+
+   char result[];
+   string result_headers = "";
+
+   ResetLastError();
+   int res = WebRequest("PUT", api, CommonHeaders(), timeout, post, result, result_headers);
+
+   if(res == -1)
+   {
+      int err = GetLastError();
+      PrintFormat("WebRequest failed (update result). err=%d, headers=%s", err, result_headers);
+      if(err == 4060)
+         Print("URL not allowed. Add ", base_url, " (with port) to Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL");
+      return;
+   }
+
+   string response = CharArrayToString(result, 0, -1, CP_UTF8);
+
+   if(res != 200 && res != 201)
+   {
+      Print("IQ Monitor Update Result API Error - Response Code: ", res);
+      Print("API Error Response: ", response);
+      
+      // Check for common validation errors
+      if(StringFind(response, "validation") != -1)
+         Print("ERROR: Validation failed. Check your input data format.");
+      else if(StringFind(response, "Unauthorized") != -1)
+         Print("ERROR: Authentication failed. Check your API key.");
+      else if(StringFind(response, "Bad Request") != -1)
+         Print("ERROR: Bad request. Check your JSON format and required fields.");
+      else if(StringFind(response, "No monitor found") != -1)
+         Print("ERROR: Monitor not found. Check name and currentSignalId.");
+   }
+   else
+   {
+      Print("IQ Monitor result update successful - Response Code: ", res);
       Print("API Response: ", response);
    }
 }

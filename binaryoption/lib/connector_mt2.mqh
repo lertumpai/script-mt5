@@ -39,6 +39,11 @@ enum Result {
 	LOSS = 2
 };
 
+struct CalculatedAmount {
+   double    amount;
+   string    curSignalId;
+};
+
 //----- Import MT2Trading library
 #import "mt2trading_library.ex5" 
 	bool mt2trading (string symbol, string direction, double amount, int expiryMinutes, martingale martingaleType, int martingaleSteps, double martingaleCoef, brokers myBroker, string signalName, string signalid);
@@ -78,13 +83,13 @@ void InitConnectorToMT2() {
 		asset = Symbol();
 }
 
-void SendMT2Signal(string signalName, string direction)
+void SendMT2Signal(string signalName, string direction, double amount, string currentSignalId)
 {
    string dateTime = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    Print("finalSigname=", signalName, ", curSignalId=", curSignalId);
    Print("asset=", asset, ", direction=", direction, ", Signal at ", dateTime);
-   mt2trading(asset, direction, CalculateAmount(), ExpiryMinutes, 0, 0,
-			 0, IQOption, signalName, curSignalId);
+   mt2trading(asset, direction, amount, ExpiryMinutes, 0, 0,
+			 0, IQOption, signalName, currentSignalId);
 }
 
 
@@ -145,7 +150,7 @@ void Tie() {
    ++tie;
 }
 
-void CheckPreviousTradeResult() {
+void CheckPreviousTradeResult(string systemName) {
    string signalId = GetSignalId();
    
    if (signalId != curSignalId) {
@@ -155,16 +160,18 @@ void CheckPreviousTradeResult() {
    
    if (prevSignalId != "") {
       int result = traderesult(prevSignalId);
-      
       if (result == 0) {
          Tie();
          previousResult = TIE;
+         UpdateIqMonitorResult(systemName, prevSignalId, "TIE");
       }
       else if (result == 1) {
          Win();
+         UpdateIqMonitorResult(systemName, prevSignalId, "WIN");
       }
       else if (result == 2) {
          Loss();
+         UpdateIqMonitorResult(systemName, prevSignalId, "LOSS");
       }
       
       prevSignalId = "";
@@ -189,12 +196,23 @@ input double Payout = 0.8;
 input double DefaultAmount = 1.25;
 input AmountType amountType = Martingale;
 
-double CalculateAmount() {
+CalculatedAmount CalculateAmount() {
+   CalculatedAmount calculatedAmount;
+   calculatedAmount.curSignalId = curSignalId;
+   
    switch (amountType) {
-      case Martingale: return calculateMartingale();
-      case MartingaleDivided2: return martingaleDivided2();
-      default: return DefaultAmount;
+      case Martingale: {
+         calculatedAmount.amount = calculateMartingale();
+         break;
+      }
+      case MartingaleDivided2: {
+         calculatedAmount.amount = martingaleDivided2();
+         break;
+      }
+      default: calculatedAmount.amount = DefaultAmount;
    }
+   
+   return calculatedAmount;
 }
 
 double calculateMartingale() {

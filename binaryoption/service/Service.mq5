@@ -4,6 +4,8 @@
 
 #include "../Include/Lertumpai/connector_mt2.mqh"
 #include "../Include/Lertumpai/signal/main.mqh"
+#include "../Include/Lertumpai/signal/type.mqh"
+#include "../Include/Lertumpai/api.mqh"
 
 input int StartHour = 7;
 input int EndHour = 21;
@@ -16,7 +18,7 @@ int OnInit()
 {
 	InitConnectorToMT2();
 	
-	Print("System trade = ", GetSystemName());
+	Print("System trade = ", GetSignalName());
 	
    return(INIT_SUCCEEDED);
 }
@@ -37,21 +39,28 @@ void OnTick()
 
     int minuteNow = t.min;
     if (minuteNow == LastSignalMinute) return ;
-   
-    CheckPreviousTradeResult();
-    PredictSignal();
     
-    if (predicted_score == 0 || predicted_score == 0.0) {
+    
+    string signalName = GetSignalName();
+   
+    CheckPreviousTradeResult(signalName);
+    Decision decision;
+    decision = PredictSignal();
+    
+    if (decision.score == 0 || decision.score == 0.0) {
        Print("=====SKIP=====");
        return ;
     }
     
-    SendMT2Signal(signalName(), predicted_direction);
-    LastSignalMinute = minuteNow;
+    CalculatedAmount calculatedAmount;
+    calculatedAmount = CalculateAmount();
+    SendMT2Signal(signalName, decision.direction, calculatedAmount.amount, calculatedAmount.curSignalId);
+    UpsertIqMonitor(signalName, calculatedAmount.amount, decision.score, decision.confidence, 0, decision.direction, calculatedAmount.curSignalId);
     
+    LastSignalMinute = minuteNow;
     Print("==========");
 }
 
-string signalName() {
+string GetSignalName() {
    return "System["+ GetSystemName() + "]" + "_" + "AmountType["+ GetAmountType() + "]";
 }
