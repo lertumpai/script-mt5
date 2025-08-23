@@ -30,7 +30,7 @@ Decision PredictSignal() {
       }
    }
    
-   if (ConfidenceMode && candle_v2_confidence::ShouldAction(decision.confidence)) {
+   if (ConfidenceMode && SignalModel == Candle_v2_confidence && candle_v2_confidence::ShouldAction(decision.confidence)) {
       decision.direction = "NONE";
    } else if (decision.score >= 0) {
       decision.direction = "CALL";

@@ -71,7 +71,7 @@ string AccountToString(Account account)
 }
 
 string GetSignalId() {
-   return NowDateTimeMinute() + "_" + AccountToString(IqOptionAccount);
+   return NowDateTimeMinute();
 }
 
 void InitConnectorToMT2() {
