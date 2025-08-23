@@ -47,15 +47,14 @@ void OnTick()
     Decision decision;
     decision = PredictSignal();
     
-    if (decision.score == 0 || decision.score == 0.0) {
-       Print("=====SKIP=====");
-       return ;
-    }
-    
     CalculatedAmount calculatedAmount;
     calculatedAmount = CalculateAmount();
-    SendMT2Signal(signalName, decision.direction, calculatedAmount.amount, calculatedAmount.curSignalId);
-    UpsertIqMonitor(signalName, calculatedAmount.amount, decision.score, decision.confidence, 0, decision.direction, calculatedAmount.curSignalId);
+    
+    if (decision.direction != "NONE") {
+      SendMT2Signal(signalName, decision.direction, calculatedAmount.amount, calculatedAmount.curSignalId);
+    }
+    
+    UpsertIqMonitor(signalName, calculatedAmount.amount, decision.score, decision.confidence, consecutiveLoss, decision.direction, calculatedAmount.curSignalId);
     
     LastSignalMinute = minuteNow;
     Print("==========");

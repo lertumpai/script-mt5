@@ -1,6 +1,4 @@
-//============================================================
-// candle_v1 - score + confidence (fixed)
-//============================================================
+input double candle_v2_confidence_threshold = 0;
 namespace candle_v2_confidence
 {
    // ---------- Small math helpers (ประกาศก่อนใช้งาน) ----------
@@ -177,26 +175,14 @@ namespace candle_v2_confidence
       double    score;        // raw score
       double    confidence;   // 0..1
    };
-
-   Decision PredictSignalWithConfidence()
-   {
-      Decision d; d.dir = CALL; d.score = 0.0; d.confidence = 0.5;
-
-      // 1) score
-      double score = PredictSignal();
-      d.score = score;
-      d.dir   = (score >= 0.0) ? CALL : PUT;
-
-      // 2) confidence
-      BarContext C; LoadBarContext(C);
-      d.confidence = PredictConfidence(score, C);
-
-      return d;
-   }
    
    double Confidence(double score) {
       BarContext C; LoadBarContext(C);
       return PredictConfidence(score, C);
+   }
+   
+   bool ShouldAction(double confidence) {
+      return confidence >= candle_v2_confidence_threshold;
    }
 
    string GetSystemName()
