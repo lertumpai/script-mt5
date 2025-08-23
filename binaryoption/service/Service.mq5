@@ -45,7 +45,7 @@ void OnTick()
    
     CheckPreviousTradeResult(signalName);
     Decision decision;
-    decision = PredictSignal();
+    decision = PredictSignal(consecutiveLoss);
     
     CalculatedAmount calculatedAmount;
     calculatedAmount = CalculateAmount();

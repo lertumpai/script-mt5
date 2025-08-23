@@ -13,10 +13,10 @@ input SignalModelEnum SignalModel = Candle_v1;
 input bool ConfidenceMode = false;
 input int ConfidenceModeAfterLoss = 0;
 
-Decision PredictSignal(int consecutiveLoss) {
+Decision PredictSignal(int _consecutiveLoss) {
    Decision decision;
    bool shouldAction = false;
-   bool enableConfidence = false;
+   bool enableConfidenceAfterLoss = false;
 
    switch (SignalModel) {
       case Candle_v1: {
@@ -33,12 +33,12 @@ Decision PredictSignal(int consecutiveLoss) {
          decision.score = candle_v2_confidence::PredictSignal();
          decision.confidence = candle_v2_confidence::Confidence(decision.score);
          shouldAction = candle_v2_confidence::ShouldAction(decision.confidence);
-         enableConfidence = consecutiveLoss >= ConfidenceModeAfterLoss;
+         enableConfidenceAfterLoss = _consecutiveLoss >= ConfidenceModeAfterLoss;
          break;
       }
    }
    
-   if (ConfidenceMode && enableConfidence && !shouldAction) {
+   if (ConfidenceMode && enableConfidenceAfterLoss && !shouldAction) {
       decision.direction = "NONE";
    } else if (decision.score >= 0) {
       decision.direction = "CALL";
