@@ -11,26 +11,34 @@ enum SignalModelEnum {
 
 input SignalModelEnum SignalModel = Candle_v1;
 input bool ConfidenceMode = false;
+input int ConfidenceModeAfterLoss = 0;
 
-Decision PredictSignal() {
+Decision PredictSignal(int consecutiveLoss) {
    Decision decision;
+   bool shouldAction = false;
+   bool enableConfidence = false;
 
    switch (SignalModel) {
       case Candle_v1: {
          decision.score = candle_v1::PredictSignal();
          decision.confidence = 0;
+         break;
       }
       case Candle_v2: {
          decision.score = candle_v2::PredictSignal();
          decision.confidence = 0;
+         break;
       }
       case Candle_v2_confidence: {
          decision.score = candle_v2_confidence::PredictSignal();
          decision.confidence = candle_v2_confidence::Confidence(decision.score);
+         shouldAction = candle_v2_confidence::ShouldAction(decision.confidence);
+         enableConfidence = consecutiveLoss >= ConfidenceModeAfterLoss;
+         break;
       }
    }
    
-   if (ConfidenceMode && SignalModel == Candle_v2_confidence && candle_v2_confidence::ShouldAction(decision.confidence)) {
+   if (ConfidenceMode && enableConfidence && !shouldAction) {
       decision.direction = "NONE";
    } else if (decision.score >= 0) {
       decision.direction = "CALL";

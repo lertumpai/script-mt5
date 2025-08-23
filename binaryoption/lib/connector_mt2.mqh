@@ -51,7 +51,6 @@ struct CalculatedAmount {
 #import
 
 int ExpiryMinutes = 1;
-input string SignalName = "sLertumpai";
 input string SignalID = "sLertumpai";
 
 input Account IqOptionAccount = NewSorawit;
@@ -71,7 +70,7 @@ string AccountToString(Account account)
 }
 
 string GetSignalId() {
-   return NowDateTimeMinute();
+   return SignalID + "_" + NowDateTimeMinute();
 }
 
 void InitConnectorToMT2() {
