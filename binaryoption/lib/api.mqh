@@ -127,7 +127,7 @@ void CallPriceUpdateAPI(string symbol, double open, double high, double low, dou
 }
 
 // -------- IQ MONITOR UPSERT --------
-void UpsertIqMonitor(string monitor_name, double amount, double score, double confidence, int consecutive_loss, string direction = "NONE", string currentSignalId = "")
+void UpsertIqMonitor(string monitor_name, double amount, double score, double confidence, int consecutive_loss, string direction = "NONE", string currentSignalId = "", string account = "")
 {
    if(StringLen(monitor_name) == 0){ Print("ERROR: Monitor name cannot be empty"); return; }
    if(amount <= 0){ Print("ERROR: Amount must be greater than 0"); return; }
@@ -136,8 +136,8 @@ void UpsertIqMonitor(string monitor_name, double amount, double score, double co
    if(direction != "PUT" && direction != "CALL" && direction != "NONE"){ Print("ERROR: Direction must be PUT, CALL, or NONE. Using NONE as default."); direction = "NONE"; }
 
    string monitor_json = StringFormat(
-      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.5f,\"consecutiveLoss\":%d,\"direction\":\"%s\",\"currentSignalId\":\"%s\"}",
-      monitor_name, amount, score, confidence, consecutive_loss, direction, currentSignalId
+      "{\"name\":\"%s\",\"amount\":%.2f,\"score\":%.2f,\"confidence\":%.5f,\"consecutiveLoss\":%d,\"direction\":\"%s\",\"currentSignalId\":\"%s\",\"account\":\"%s\"}",
+      monitor_name, amount, score, confidence, consecutive_loss, direction, currentSignalId, account
    );
 
    Print("Upserting IQ Monitor: ", monitor_name);
@@ -186,7 +186,7 @@ void CallIqMonitorUpsertApi(string json_body)
 }
 
 // -------- IQ MONITOR UPDATE RESULT --------
-void UpdateIqMonitorResult(string monitor_name, string current_signal_id, string result)
+void UpdateIqMonitorResult(string account, string monitor_name, string current_signal_id, string result)
 {
    if(StringLen(monitor_name) == 0){ Print("ERROR: Monitor name cannot be empty"); return; }
    if(StringLen(current_signal_id) == 0){ Print("ERROR: Current signal ID cannot be empty"); return; }
@@ -198,8 +198,8 @@ void UpdateIqMonitorResult(string monitor_name, string current_signal_id, string
    }
 
    string result_json = StringFormat(
-      "{\"name\":\"%s\",\"currentSignalId\":\"%s\",\"result\":\"%s\"}",
-      monitor_name, current_signal_id, result
+      "{\"name\":\"%s\",\"currentSignalId\":\"%s\",\"result\":\"%s\",\"account\":\"%s\"}",
+      monitor_name, current_signal_id, result, account
    );
 
    Print("Updating IQ Monitor Result: ", monitor_name, " (Signal: ", current_signal_id, ") -> ", result);

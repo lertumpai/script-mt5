@@ -54,12 +54,12 @@ void OnTick()
       SendMT2Signal(signalName, decision.direction, calculatedAmount.amount, calculatedAmount.curSignalId);
     }
     
-    UpsertIqMonitor(signalName, calculatedAmount.amount, decision.score, decision.confidence, consecutiveLoss, decision.direction, calculatedAmount.curSignalId);
+    UpsertIqMonitor(signalName, calculatedAmount.amount, decision.score, decision.confidence, consecutiveLoss, decision.direction, calculatedAmount.curSignalId, AccountToString());
     
     LastSignalMinute = minuteNow;
     Print("==========");
 }
 
 string GetSignalName() {
-   return "System["+ GetSystemName() + "]" + "_" + "AmountType["+ GetAmountType() + "]";
+   return "System["+ GetSystemName() + "]" + "_" + "AmountType["+ GetAmountType() + "]" + "_" + SignalID ;
 }

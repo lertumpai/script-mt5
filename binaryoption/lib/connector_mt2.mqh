@@ -29,8 +29,8 @@ enum martingale {
 };
 
 enum Account {
-   NewSorawit = 0,
-   slertumpai = 1
+   slertumpai_real = 0,
+   slertumpai_demo = 1
 };
 	
 enum Result {
@@ -53,18 +53,18 @@ struct CalculatedAmount {
 int ExpiryMinutes = 1;
 input string SignalID = "sLertumpai";
 
-input Account IqOptionAccount = NewSorawit;
+input Account IqOptionAccount = slertumpai_real;
 
 datetime signalTime;
 int LastSignalMinute = 0;
 string asset;
 
-string AccountToString(Account account)
+string AccountToString()
 {
-   switch(account)
+   switch(IqOptionAccount)
    {
-      case NewSorawit:   return "new-sorawit";
-      case slertumpai:   return "slertumpai";
+      case slertumpai_real:   return "1220581410";
+      case slertumpai_demo:   return "1220581411";
       default:          return "UNKNOWN";
    }
 }
@@ -151,6 +151,7 @@ void Tie() {
 
 void CheckPreviousTradeResult(string systemName) {
    string signalId = GetSignalId();
+   string account = AccountToString();
    
    if (signalId != curSignalId) {
       prevSignalId = curSignalId;
@@ -162,15 +163,15 @@ void CheckPreviousTradeResult(string systemName) {
       if (result == 0) {
          Tie();
          previousResult = TIE;
-         UpdateIqMonitorResult(systemName, prevSignalId, "TIE");
+         UpdateIqMonitorResult(account, systemName, prevSignalId, "TIE");
       }
       else if (result == 1) {
          Win();
-         UpdateIqMonitorResult(systemName, prevSignalId, "WIN");
+         UpdateIqMonitorResult(account, systemName, prevSignalId, "WIN");
       }
       else if (result == 2) {
          Loss();
-         UpdateIqMonitorResult(systemName, prevSignalId, "LOSS");
+         UpdateIqMonitorResult(account, systemName, prevSignalId, "LOSS");
       }
       
       prevSignalId = "";
